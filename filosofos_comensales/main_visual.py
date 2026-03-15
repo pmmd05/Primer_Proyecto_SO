@@ -261,13 +261,18 @@ def index():
     return render_template_string(HTML,
         default_n      = DEFAULT_N,
         default_cycles = DEFAULT_CYCLES,
-        names_js       = str(NAMES),
+    names_js       = NAMES,
     )
 
 @app.route('/imagenes/<path:filename>')
 def serve_image(filename):
     img_dir = os.path.join(SCRIPT_DIR, 'imagenes')
     return send_from_directory(img_dir, filename)
+
+@app.route('/favicon.ico')
+def favicon():
+  img_dir = os.path.join(SCRIPT_DIR, 'imagenes')
+  return send_from_directory(img_dir, 'pensando.png', mimetype='image/png')
 
 @socketio.on('connect')
 def on_connect():
@@ -615,7 +620,7 @@ header{
 // ─────────────────────────────────────────────────────────────
 //  CONSTANTES Y CONFIG
 // ─────────────────────────────────────────────────────────────
-const ALL_NAMES   = {{ names_js }};
+const ALL_NAMES   = {{ names_js | tojson }};
 const DEFAULT_N   = {{ default_n }};
 const DEFAULT_CYC = {{ default_cycles }};
 
