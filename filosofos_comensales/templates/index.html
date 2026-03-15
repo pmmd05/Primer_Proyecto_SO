@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Filósofos Comensales — SO / URL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+/* ── Variables ─────────────────────────────────────────────── */
+:root {
+  --bg:      #0a0705;
+  --bg1:     #110e08;
+  --bg2:     #1a1408;
+  --bg3:     #231c0e;
+  --border:  #2e2210;
+  --bord2:   #45330f;
+  --gold:    #d4a017;
+  --gold2:   #f0c040;
+  --amber:   #ff9500;
+  --red:     #ff4444;
+  --green:   #44cc88;
+  --blue:    #44aaff;
+  --txt:     #e8d8b0;
+  --dim:     #6b5a30;
+  --white:   #fff8ee;
+  --table:   #3d2810;
+  --table2:  #5a3c18;
+  --fh: 'Cinzel', serif;
+  --fm: 'JetBrains Mono', monospace;
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; width: 100%; }
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--fm);
+  font-size: 12px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Parchment texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(212,160,23,.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(255,149,0,.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 50%, rgba(10,7,5,0) 0%, rgba(10,7,5,.5) 100%);
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 300;
+  background: rgba(10,7,5,.96); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--bord2);
+  padding: 8px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.logo {
+  font-family: var(--fh); font-size: 11px; font-weight: 900;
+  letter-spacing: 3px; color: var(--gold2); white-space: nowrap;
+  text-shadow: 0 0 20px rgba(212,160,23,.4);
+}
+.hdr-r { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Controls */
+.ctrl-group { display: flex; align-items: center; gap: 6px; }
+.ctrl-lbl {
+  font-family: var(--fh); font-size: 7px;
+  letter-spacing: 2px; color: var(--dim);
+}
+.ctrl-input {
+  width: 52px; padding: 4px 6px;
+  background: var(--bg2); border: 1px solid var(--bord2);
+  color: var(--gold2); font-family: var(--fm);
+  font-size: 11px; border-radius: 4px; text-align: center;
+}
+.ctrl-input:focus { outline: none; border-color: var(--gold); }
+
+.btn-go {
+  font-family: var(--fh); font-size: 8px; letter-spacing: 2px; font-weight: 600;
+  padding: 8px 18px; border: 1px solid var(--gold);
+  background: rgba(212,160,23,.08); color: var(--gold2);
+  border-radius: 5px; cursor: pointer; transition: all .2s;
+}
+.btn-go:hover:not(:disabled) {
+  background: rgba(212,160,23,.2);
+  box-shadow: 0 0 20px rgba(212,160,23,.25);
+}
+.btn-go:disabled { opacity: .35; cursor: default; }
+
+/* ── Main layout ────────────────────────────────────────────── */
+.page { position: relative; z-index: 1; }
+.layout { display: flex; flex-direction: column; align-items: center; padding: 16px; }
+
+/* ── TABLE SCENE ────────────────────────────────────────────── */
+.scene-wrap {
+  position: relative;
+  width: 540px; height: 540px;
+  flex-shrink: 0;
+}
+
+/* Mesa redonda */
+.table-el {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 200px; height: 200px;
+  transform: translate(-50%,-50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 35%, var(--table2) 0%, var(--table) 60%, #1e0f00 100%);
+  border: 3px solid var(--bord2);
+  box-shadow:
+    0 0 0 1px #6b4a1a,
+    0 8px 40px rgba(0,0,0,.7),
+    inset 0 2px 8px rgba(255,180,60,.08);
+  display: flex; align-items: center; justify-content: center;
+}
+.table-text {
+  font-family: var(--fh); font-size: 9px; letter-spacing: 2px;
+  color: rgba(212,160,23,.45); text-align: center; line-height: 1.6;
+}
+
+/* ── PHILOSOPHER SEAT ───────────────────────────────────────── */
+.phil-seat {
+  position: absolute;
+  transform-origin: center center;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  width: 108px;
+}
+.phil-card {
+  background: var(--bg1); border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px 6px 6px; width: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: border-color .3s, box-shadow .3s;
+  cursor: default;
+}
+.phil-card.g-thinking { border-color: var(--bord2); }
+.phil-card.g-waiting  { border-color: var(--amber) !important; box-shadow: 0 0 16px rgba(255,149,0,.2) !important; }
+.phil-card.g-eating   { border-color: var(--gold2) !important; box-shadow: 0 0 22px rgba(240,192,64,.3) !important; }
+.phil-card.g-done     { border-color: var(--dim) !important; opacity: .6; }
+
+.phil-img {
+  width: 58px; height: 58px; object-fit: contain; border-radius: 6px;
+  transition: filter .3s, transform .3s;
+}
+.phil-img.s-thinking { filter: brightness(.75) sepia(.3); transform: scale(.95); }
+.phil-img.s-waiting  { filter: brightness(.9) sepia(.1) drop-shadow(0 0 5px var(--amber)); transform: scale(1); }
+.phil-img.s-eating   { filter: brightness(1.1) drop-shadow(0 0 10px var(--gold2)); transform: scale(1.06); }
+.phil-img.s-done     { filter: grayscale(1) brightness(.5); }
+.phil-img.s-idle     { filter: brightness(.5); transform: scale(.9); }
+
+.phil-name {
+  font-family: var(--fh); font-size: 8px; letter-spacing: 1px;
+  color: var(--gold); text-align: center; white-space: nowrap;
+}
+.phil-state-lbl {
+  font-family: var(--fh); font-size: 6.5px; letter-spacing: 1.5px;
+  height: 12px; text-align: center; transition: color .2s;
+}
+.phil-eats {
+  font-size: 9px; color: var(--dim); font-family: var(--fh);
+}
+.phil-eats b { color: var(--gold2); }
+
+/* Eat pulse animation */
+@keyframes eatPulse {
+  0%   { box-shadow: 0 0 22px rgba(240,192,64,.3); }
+  50%  { box-shadow: 0 0 40px rgba(240,192,64,.6); }
+  100% { box-shadow: 0 0 22px rgba(240,192,64,.3); }
+}
+.phil-card.eating-anim { animation: eatPulse 1s ease infinite; }
+
+/* ── FORK ─────────────────────────────────────────────────── */
+.fork-el {
+  position: absolute;
+  width: 28px; height: 28px;
+  transform-origin: center center;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  transition: filter .25s, transform .25s;
+  pointer-events: none;
+  user-select: none;
+}
+.fork-el.free  { filter: brightness(.45); }
+.fork-el.held  {
+  filter: brightness(1.3) drop-shadow(0 0 8px var(--gold2));
+  transform: rotate(30deg) scale(1.15);
+}
+@keyframes forkGrab {
+  0%   { transform: rotate(0deg) scale(1); }
+  40%  { transform: rotate(20deg) scale(1.2); }
+  100% { transform: rotate(30deg) scale(1.15); }
+}
+.fork-el.held { animation: forkGrab .3s ease forwards; }
+
+/* ── STATS BAR ──────────────────────────────────────────────── */
+.stats-bar {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  max-width: 600px; margin-top: 14px;
+}
+.stat-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 20px; font-family: var(--fh); font-size: 8px; letter-spacing: 1px;
+}
+.stat-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); }
+.stat-chip.s-thinking .stat-dot { background: var(--blue); }
+.stat-chip.s-waiting  .stat-dot { background: var(--amber); animation: blink .8s infinite; }
+.stat-chip.s-eating   .stat-dot { background: var(--gold2); }
+.stat-chip.s-done     .stat-dot { background: var(--dim); }
+
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
+
+/* ── LOG ────────────────────────────────────────────────────── */
+.log-sec { width: 100%; max-width: 900px; margin-top: 14px; }
+.log-wrap {
+  background: var(--bg1); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+}
+.log-hdr {
+  padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
+  font-family: var(--fh); font-size: 7px; letter-spacing: 2px; color: var(--gold);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.log-clr {
+  font-size: 7px; background: none; border: 1px solid var(--border);
+  color: var(--dim); border-radius: 3px; padding: 2px 7px;
+  cursor: pointer; font-family: var(--fh); letter-spacing: 1px;
+}
+.log-clr:hover { border-color: var(--bord2); color: var(--txt); }
+.log-body {
+  height: 150px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--bord2) transparent;
+}
+.log-row {
+  display: flex; gap: 8px; padding: 3px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px; animation: logIn .12s ease;
+}
+@keyframes logIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
+.log-ts   { color: var(--dim); min-width: 58px; font-size: 9px; flex-shrink: 0; }
+.c-system { color: var(--dim); font-style: italic; }
+
+/* ── OVERLAY FINAL ──────────────────────────────────────────── */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(10,7,5,.94); backdrop-filter: blur(14px);
+  z-index: 500; align-items: center; justify-content: center;
+}
+.overlay.show { display: flex; }
+.fin-card {
+  background: var(--bg1); border: 1px solid var(--bord2); border-radius: 14px;
+  padding: 32px; max-width: 460px; width: 92%; text-align: center;
+  box-shadow: 0 0 60px rgba(212,160,23,.06);
+  animation: cardIn .45s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes cardIn {
+  from { transform: scale(.85); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.fin-title {
+  font-family: var(--fh); font-size: 11px; letter-spacing: 4px;
+  color: var(--gold2); margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(240,192,64,.3);
+}
+.fin-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg2); border-radius: 7px; padding: 9px 14px; margin-bottom: 7px;
+  font-family: var(--fh); font-size: 8px; letter-spacing: 2px;
+}
+.fin-val  { font-family: var(--fh); font-size: 17px; font-weight: 900; color: var(--gold2); }
+.fin-sub  { font-size: 8px; color: var(--dim); }
+.btn-rst {
+  font-family: var(--fh); font-size: 7px; letter-spacing: 2px; margin-top: 14px;
+  padding: 9px 20px; border: 1px solid var(--bord2); background: var(--bg2);
+  color: var(--txt); border-radius: 6px; cursor: pointer; transition: all .2s;
+}
+.btn-rst:hover { border-color: var(--gold); color: var(--gold2); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ── HEADER ────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">FILÓSOFOS COMENSALES &nbsp;/&nbsp; SO — URL</div>
+  <div class="hdr-r">
+    <div class="ctrl-group">
+      <span class="ctrl-lbl">FILÓSOFOS</span>
+      <input class="ctrl-input" id="inp-n" type="number" min="2" max="10" value="{{ default_n }}">
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-lbl">CICLOS</span>
+      <input class="ctrl-input" id="inp-c" type="number" min="1" max="50" value="{{ default_cycles }}">
+    </div>
+    <button class="btn-go" id="btn-go" onclick="startSim()">▶ INICIAR</button>
+  </div>
+</header>
+
+<!-- ── SCENE ─────────────────────────────────────────────────── -->
+<div class="layout">
+  <div class="scene-wrap" id="scene">
+    <!-- Mesa redonda -->
+    <div class="table-el" id="table-el">
+      <div class="table-text" id="table-text">MESA<br>CIRCULAR</div>
+    </div>
+    <!-- Filósofos y tenedores generados por JS -->
+  </div>
+
+  <!-- Stats chips -->
+  <div class="stats-bar" id="stats-bar"></div>
+
+  <!-- Log -->
+  <div class="log-sec">
+    <div class="log-wrap">
+      <div class="log-hdr">
+        <span>◉ REGISTRO DE EVENTOS</span>
+        <button class="log-clr" onclick="document.getElementById('log-body').innerHTML=''">LIMPIAR</button>
+      </div>
+      <div class="log-body" id="log-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── OVERLAY FINAL ─────────────────────────────────────────── -->
+<div class="overlay" id="overlay">
+  <div class="fin-card">
+    <div class="fin-title">✦ BANQUETE COMPLETADO ✦</div>
+    <div id="fin-rows"></div>
+    <button class="btn-rst" onclick="restartUI()">↺ NUEVO BANQUETE</button>
+  </div>
+</div>
+
+<script id="sim-config" type="application/json">
+  {{ {
+    "names": names_js,
+    "defaultN": default_n,
+    "defaultCycles": default_cycles
+  } | tojson }}
+</script>
+
+<!-- ── JAVASCRIPT ─────────────────────────────────────────────── -->
+<script>
+// ─────────────────────────────────────────────────────────────
+//  CONSTANTES (inyectadas por Jinja2 desde backend.py)
+// ─────────────────────────────────────────────────────────────
+const simConfig   = JSON.parse(document.getElementById('sim-config').textContent);
+const ALL_NAMES   = simConfig.names;
+const DEFAULT_N   = simConfig.defaultN;
+const DEFAULT_CYC = simConfig.defaultCycles;
+
+// Paleta de colores por filósofo
+const PHIL_COLORS = [
+  '#44aaff','#44cc88','#ffb300','#ff6eb4','#ff5555',
+  '#a78bfa','#34d399','#fbbf24','#60a5fa','#f87171',
+];
+
+// ─────────────────────────────────────────────────────────────
+//  LAYOUT — posicionar elementos en círculo
+// ─────────────────────────────────────────────────────────────
+const SEAT_W = 108;
+const SEAT_H = 128;
+
+function sceneRadius(n) {
+  const base = Math.max(220, n * 52);
+  return Math.min(base, 300);
+}
+
+function buildScene(n, names) {
+  const scene     = document.getElementById('scene');
+  const tableEl   = document.getElementById('table-el');
+  const sceneSize = Math.max(540, n * 110 + 60);
+
+  scene.style.width  = sceneSize + 'px';
+  scene.style.height = sceneSize + 'px';
+
+  const cx = sceneSize / 2;
+  const cy = sceneSize / 2;
+  const R  = sceneRadius(n);
+
+  // Limpiar filósofos y tenedores anteriores
+  document.querySelectorAll('.phil-seat, .fork-el').forEach(el => el.remove());
+
+  // Tamaño de la mesa
+  const tableSize = Math.max(160, sceneSize * 0.28);
+  tableEl.style.width  = tableSize + 'px';
+  tableEl.style.height = tableSize + 'px';
+
+  // Construir filósofos
+  for (let i = 0; i < n; i++) {
+    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+    const px = cx + R * Math.cos(angle);
+    const py = cy + R * Math.sin(angle);
+
+    const seat = document.createElement('div');
+    seat.className = 'phil-seat';
+    seat.id = 'seat-' + i;
+    seat.style.left = (px - SEAT_W / 2) + 'px';
+    seat.style.top  = (py - SEAT_H / 2) + 'px';
+    seat.innerHTML = `
+      <div class="phil-card g-thinking" id="card-${i}">
+        <img class="phil-img s-idle" id="img-${i}"
+             src="/imagenes/pensando.png" alt="${names[i]}">
+        <div class="phil-name">${names[i]}</div>
+        <div class="phil-state-lbl" id="slbl-${i}" style="color:var(--dim)">IDLE</div>
+        <div class="phil-eats" id="eats-${i}">comidas: <b>0</b></div>
+      </div>`;
+    scene.appendChild(seat);
+  }
+
+  // Construir tenedores (entre cada par de filósofos)
+  for (let i = 0; i < n; i++) {
+    const angle1    = (2 * Math.PI * i / n) - Math.PI / 2;
+    const angle2    = (2 * Math.PI * ((i + 1) % n) / n) - Math.PI / 2;
+    const midAngle  = (angle1 + angle2) / 2;
+    const forkR     = R * 0.62;
+    const fx = cx + forkR * Math.cos(midAngle);
+    const fy = cy + forkR * Math.sin(midAngle);
+
+    const fork = document.createElement('div');
+    fork.className = 'fork-el free';
+    fork.id = 'fork-' + i;
+    fork.title = 'Tenedor ' + i;
+    fork.style.left = (fx - 14) + 'px';
+    fork.style.top  = (fy - 14) + 'px';
+    const rotDeg = (midAngle * 180 / Math.PI) + 90;
+    fork.style.transform = `rotate(${rotDeg}deg)`;
+    fork.dataset.baseRot = rotDeg;
+    fork.innerHTML = '🍴';
+    scene.appendChild(fork);
+  }
+
+  buildStats(n, names);
+}
+
+function buildStats(n, names) {
+  const bar = document.getElementById('stats-bar');
+  bar.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const chip = document.createElement('div');
+    chip.className = 'stat-chip s-idle';
+    chip.id = 'chip-' + i;
+    chip.innerHTML = `<span class="stat-dot"></span>
+      <span style="color:${PHIL_COLORS[i % PHIL_COLORS.length]}">${names[i]}</span>
+      <span id="chip-lbl-${i}" style="color:var(--dim)">IDLE</span>`;
+    bar.appendChild(chip);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MAPAS DE ESTADO
+// ─────────────────────────────────────────────────────────────
+const IMG_MAP = {
+  idle:     './imagenes/pensando.png',
+  thinking: './imagenes/pensando.png',
+  waiting:  './imagenes/esperando.png',
+  eating:   './imagenes/comiendo.png',
+  done:     './imagenes/pensando.png',
+};
+const LBL_MAP = {
+  idle:     'IDLE',
+  thinking: 'PENSANDO',
+  waiting:  'ESPERANDO',
+  eating:   'COMIENDO',
+  done:     'TERMINADO ✓',
+};
+const CARD_CLASS = {
+  idle:     'g-thinking',
+  thinking: 'g-thinking',
+  waiting:  'g-waiting',
+  eating:   'g-eating',
+  done:     'g-done',
+};
+const CHIP_CLASS = {
+  idle:     's-thinking',
+  thinking: 's-thinking',
+  waiting:  's-waiting',
+  eating:   's-eating',
+  done:     's-done',
+};
+
+// ─────────────────────────────────────────────────────────────
+//  RENDER DE ESTADO
+// ─────────────────────────────────────────────────────────────
+function updatePhilosopher(i, state, count) {
+  const imgEl  = document.getElementById('img-'  + i);
+  const cardEl = document.getElementById('card-' + i);
+  const lblEl  = document.getElementById('slbl-' + i);
+  const eatsEl = document.getElementById('eats-' + i);
+  const chipEl = document.getElementById('chip-' + i);
+  const cLblEl = document.getElementById('chip-lbl-' + i);
+  if (!imgEl) return;
+
+  imgEl.src       = IMG_MAP[state] || IMG_MAP.idle;
+  imgEl.className = 'phil-img s-' + state;
+
+  const color = state === 'eating'  ? 'var(--gold2)'
+              : state === 'waiting' ? 'var(--amber)'
+              : state === 'done'    ? 'var(--dim)'
+              : PHIL_COLORS[i % PHIL_COLORS.length];
+  lblEl.textContent = LBL_MAP[state] || state.toUpperCase();
+  lblEl.style.color = color;
+
+  cardEl.className = 'phil-card ' + (CARD_CLASS[state] || 'g-thinking');
+  if (state === 'eating') cardEl.classList.add('eating-anim');
+
+  if (eatsEl) eatsEl.innerHTML = `comidas: <b>${count}</b>`;
+
+  if (chipEl) chipEl.className = 'stat-chip ' + (CHIP_CLASS[state] || 's-thinking');
+  if (cLblEl) { cLblEl.textContent = LBL_MAP[state] || state; cLblEl.style.color = color; }
+}
+
+function updateForks(forkHeld, forkBy) {
+  if (!forkHeld) return;
+  for (let i = 0; i < forkHeld.length; i++) {
+    const el = document.getElementById('fork-' + i);
+    if (!el) continue;
+    const baseRot = parseFloat(el.dataset.baseRot) || 0;
+    if (forkHeld[i]) {
+      el.className = 'fork-el held';
+      el.style.transform = `rotate(${baseRot + 30}deg) scale(1.15)`;
+      el.style.filter = `brightness(1.3) drop-shadow(0 0 8px var(--gold2))`;
+    } else {
+      el.className = 'fork-el free';
+      el.style.transform = `rotate(${baseRot}deg)`;
+      el.style.filter = `brightness(.45)`;
+    }
+  }
+}
+
+function applySnapshot(data) {
+  if (!data) return;
+  const n = data.n || DEFAULT_N;
+  if (data.states) {
+    for (let i = 0; i < n; i++) {
+      updatePhilosopher(
+        i,
+        data.states[i] || 'idle',
+        data.counts ? data.counts[i] : 0,
+      );
+    }
+  }
+  updateForks(data.fork_held, data.fork_by);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LOG
+// ─────────────────────────────────────────────────────────────
+function addLog(msg, kind, ts) {
+  const body  = document.getElementById('log-body');
+  const row   = document.createElement('div');
+  row.className = 'log-row';
+  const philIdx = parseInt(kind);
+  const color   = isNaN(philIdx) ? 'var(--dim)' : PHIL_COLORS[philIdx % PHIL_COLORS.length];
+  const cls     = isNaN(philIdx) ? 'c-system' : '';
+  row.innerHTML = `<span class="log-ts">${ts}</span>
+    <span class="${cls}" style="color:${cls ? '' : color}">${msg}</span>`;
+  body.insertBefore(row, body.firstChild);
+  if (body.children.length > 200) body.removeChild(body.lastChild);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SOCKET.IO
+// ─────────────────────────────────────────────────────────────
+const socket = io();
+let N = DEFAULT_N;
+
+socket.on('connect', () => {
+  addLog('Conectado al servidor', 'system', new Date().toLocaleTimeString());
+  buildScene(DEFAULT_N, ALL_NAMES.slice(0, DEFAULT_N));
+});
+
+socket.on('ready', data => {
+  if (data.n) buildScene(data.n, data.names || ALL_NAMES.slice(0, data.n));
+});
+
+socket.on('simulation_start', data => {
+  N = data.n;
+  buildScene(N, data.names || ALL_NAMES.slice(0, N));
+  applySnapshot(data);
+  document.getElementById('btn-go').disabled    = true;
+  document.getElementById('btn-go').textContent = '⟳ EN CURSO';
+  document.getElementById('inp-n').disabled = true;
+  document.getElementById('inp-c').disabled = true;
+  document.getElementById('table-text').innerHTML = `${N} FILÓSOFOS<br>${data.cycles} CICLOS`;
+});
+
+socket.on('state_update',  data => applySnapshot(data));
+socket.on('fork_attempt',  data => applySnapshot(data));
+socket.on('fork_taken',    data => { applySnapshot(data); updateForks(data.fork_held, data.fork_by); });
+socket.on('eating_start',  data => applySnapshot(data));
+socket.on('eating_end',    data => applySnapshot(data));
+socket.on('log',           data => addLog(data.msg, data.kind, data.ts));
+
+socket.on('simulation_end', data => {
+  document.getElementById('btn-go').textContent = '✓ COMPLETADO';
+
+  const rows  = document.getElementById('fin-rows');
+  rows.innerHTML = '';
+  const names = data.names || ALL_NAMES.slice(0, data.counts.length);
+  data.counts.forEach((c, i) => {
+    const bar = '█'.repeat(Math.round(c / data.cycles * 10)) +
+                '░'.repeat(10 - Math.round(c / data.cycles * 10));
+    const row = document.createElement('div');
+    row.className = 'fin-row';
+    row.innerHTML = `
+      <span style="color:${PHIL_COLORS[i % PHIL_COLORS.length]}">${names[i]}</span>
+      <span style="font-size:8px;color:var(--dim);font-family:var(--fm)">${bar}</span>
+      <span class="fin-val">${c}</span>`;
+    rows.appendChild(row);
+  });
+
+  setTimeout(() => document.getElementById('overlay').classList.add('show'), 1600);
+});
+
+// ─────────────────────────────────────────────────────────────
+//  ACCIONES DE USUARIO
+// ─────────────────────────────────────────────────────────────
+function startSim() {
+  const n = Math.max(2, Math.min(10, parseInt(document.getElementById('inp-n').value) || DEFAULT_N));
+  const c = Math.max(1, Math.min(50, parseInt(document.getElementById('inp-c').value) || DEFAULT_CYC));
+  socket.emit('start', { n, cycles: c });
+}
+
+function restartUI() {
+  document.getElementById('overlay').classList.remove('show');
+  const btn = document.getElementById('btn-go');
+  btn.disabled = false;
+  btn.textContent = '▶ INICIAR';
+  document.getElementById('inp-n').disabled = false;
+  document.getElementById('inp-c').disabled = false;
+  document.getElementById('log-body').innerHTML = '';
+  const n = parseInt(document.getElementById('inp-n').value) || DEFAULT_N;
+  buildScene(n, ALL_NAMES.slice(0, n));
+  document.getElementById('table-text').innerHTML = 'MESA<br>CIRCULAR';
+}
+
+// Reconstruir escena cuando cambia N antes de iniciar
+document.getElementById('inp-n').addEventListener('change', () => {
+  const n = Math.max(2, Math.min(10, parseInt(document.getElementById('inp-n').value) || DEFAULT_N));
+  buildScene(n, ALL_NAMES.slice(0, n));
+});
+</script>
+</body>
+</html>
