@@ -271,8 +271,17 @@ def consumer(kind: str) -> None:
                     return
 
                 # Seguir esperando
-                if _states.get(actor_key) != 'waiting':
-                    set_state(actor_key, 'waiting')
+                if not _buffer:
+                    new_state = 'blocked'
+                    reason    = "buffer vacío"
+                else:
+                    front_kind = classify(_buffer[0])
+                    new_state  = 'waiting'
+                    reason     = f"frente es {front_kind.upper()}, espera {kind.upper()}"
+
+                if _states.get(actor_key) != new_state:
+                    set_state(actor_key, new_state)
+                    log(f"{name} BLOQUEADO — {reason}", 'blocked')
                     emit_event('state_update')
                 condition.wait()                        # libera lock, espera notify
 

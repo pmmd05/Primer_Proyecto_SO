@@ -56,10 +56,8 @@ header {
   padding: 3px 8px; border-radius: 20px; font-size: 8px;
   letter-spacing: 1px; border: 1px solid; font-family: var(--fh); font-weight: 700;
 }
+/* Solo la pill del nombre de archivo — sin pills de conteo por tipo */
 .p-fp    { color: var(--dim);   border-color: var(--border); }
-.p-even  { color: var(--even);  border-color: var(--even);  background: rgba(0,212,255,.06); }
-.p-odd   { color: var(--odd);   border-color: var(--odd);   background: rgba(255,179,0,.06); }
-.p-prime { color: var(--prime); border-color: var(--prime); background: rgba(255,61,120,.06); }
 
 .btn-upload {
   font-family: var(--fh); font-size: 7px; letter-spacing: 2px; font-weight: 600;
@@ -145,13 +143,6 @@ header {
 .prog-rail { height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
 .prog-bar  { height: 100%; background: var(--pro); border-radius: 2px; width: 0%; transition: width .4s ease; }
 .prog-lbl  { text-align: center; font-size: 9px; color: var(--dim); margin-top: 4px; letter-spacing: 1px; }
-
-/* ── Distribution rows ──────────────────────────────────────── */
-.dist { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
-.dist-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 3px 7px; background: var(--bg2); border-radius: 4px; font-size: 10px;
-}
 
 /* ── Sum box ────────────────────────────────────────────────── */
 .sum-box {
@@ -343,7 +334,7 @@ header {
 
     <div class="up-hint">
       El archivo debe contener un número entero por línea.<br>
-      El sistema clasifica automáticamente: primos → impares → pares.
+      Los consumidores clasifican automáticamente: primos → impares → pares.
     </div>
     <div class="up-status" id="up-status"></div>
   </div>
@@ -379,10 +370,8 @@ header {
 <header>
   <div class="logo">PRODUCTOR<b>-CONSUMIDOR</b>&nbsp;/&nbsp;SO — URL</div>
   <div class="hdr-r">
-    <span class="pill p-fp"  id="pill-fp">sin archivo</span>
-    <span class="pill p-even"  id="pill-even"  style="display:none">PARES 0</span>
-    <span class="pill p-odd"   id="pill-odd"   style="display:none">IMPARES 0</span>
-    <span class="pill p-prime" id="pill-prime"  style="display:none">PRIMOS 0</span>
+    <!-- Solo nombre del archivo; sin pills de conteo por tipo -->
+    <span class="pill p-fp" id="pill-fp">sin archivo</span>
     <button class="btn-upload" id="btn-change" style="display:none" onclick="changeFile()">📂 CAMBIAR</button>
     <button class="btn-go" id="btn-go" disabled onclick="startSim()">▶ INICIAR</button>
   </div>
@@ -403,27 +392,14 @@ header {
              src="/imagenes/espera.png" alt="estado productor">
         <div class="state-lbl" id="slbl-producer" style="color:var(--dim)">IDLE</div>
       </div>
+      <!-- Solo el número producido sin etiqueta de clasificación -->
       <div class="state-num" id="snum-producer" style="color:var(--pro)">—</div>
-      <div style="text-align:center;font-size:8px;color:var(--dim);height:14px"
-           id="stag-producer"></div>
+      <!-- Barra de progreso: cuántos números se han insertado al buffer -->
       <div class="prog-wrap">
         <div class="prog-rail"><div class="prog-bar" id="prog-bar"></div></div>
         <div class="prog-lbl" id="prog-lbl">— / —</div>
       </div>
-      <div class="dist">
-        <div class="dist-row">
-          <span style="color:var(--even)">PARES</span>
-          <span id="dist-even" style="color:var(--even)">—</span>
-        </div>
-        <div class="dist-row">
-          <span style="color:var(--odd)">IMPARES</span>
-          <span id="dist-odd" style="color:var(--odd)">—</span>
-        </div>
-        <div class="dist-row">
-          <span style="color:var(--prime)">PRIMOS</span>
-          <span id="dist-prime" style="color:var(--prime)">—</span>
-        </div>
-      </div>
+      <!-- Sin distribución por tipo: eso es trabajo de los consumidores -->
     </div>
   </div>
 </div>
@@ -551,17 +527,14 @@ header {
 
 <!-- ── JAVASCRIPT ────────────────────────────────────────────── -->
 <script>
-// ─────────────────────────────────────────────────────────────
-//  CONSTANTES
-//  buffer_size viene del backend vía Jinja2; el resto es dinámico
-// ─────────────────────────────────────────────────────────────
 const simConfig = JSON.parse(document.getElementById('sim-config').textContent);
-const BUF_SIZE = simConfig.bufferSize;
-let TOTAL      = 0;                   // se actualiza tras cargar archivo
-let prodIdx    = 0;
+const BUF_SIZE  = simConfig.bufferSize;
+let TOTAL   = 0;
+let prodIdx = 0;
 
 // ─────────────────────────────────────────────────────────────
-//  HELPERS DE CLASIFICACIÓN (espejo del backend)
+//  HELPERS DE CLASIFICACIÓN (espejo del backend — solo para
+//  colorear el buffer y el frente; nunca para el productor)
 // ─────────────────────────────────────────────────────────────
 function isPrime(n) {
   if (n < 2) return false;
@@ -617,77 +590,53 @@ const upArea    = document.getElementById('up-area');
 const fileInput = document.getElementById('file-input');
 const upStatus  = document.getElementById('up-status');
 
-// Drag & drop
 upArea.addEventListener('dragover', e => { e.preventDefault(); upArea.classList.add('drag-over'); });
-upArea.addEventListener('dragleave', ()  => upArea.classList.remove('drag-over'));
+upArea.addEventListener('dragleave', () => upArea.classList.remove('drag-over'));
 upArea.addEventListener('drop', e => {
   e.preventDefault();
   upArea.classList.remove('drag-over');
   const file = e.dataTransfer.files[0];
   if (file) uploadFile(file);
 });
-
 fileInput.addEventListener('change', e => {
   const file = e.target.files[0];
   if (file) uploadFile(file);
 });
 
 async function uploadFile(file) {
-  // Mostrar spinner mientras procesa
-  upStatus.innerHTML = '<span class="up-spinner"></span> Procesando...';
+  upStatus.innerHTML   = '<span class="up-spinner"></span> Procesando...';
   upStatus.style.color = 'var(--dim)';
-
   const formData = new FormData();
   formData.append('file', file);
-
   try {
     const res  = await fetch('/upload', { method: 'POST', body: formData });
     const data = await res.json();
-
-    if (data.success) {
-      onFileLoaded(data);
-    } else {
-      upStatus.textContent = '⚠ ' + data.error;
-      upStatus.style.color = 'var(--red)';
-    }
-  } catch (err) {
+    if (data.success) onFileLoaded(data);
+    else { upStatus.textContent = '⚠ ' + data.error; upStatus.style.color = 'var(--red)'; }
+  } catch {
     upStatus.textContent = '⚠ Error de conexión con el servidor.';
     upStatus.style.color = 'var(--red)';
   }
 }
 
 function onFileLoaded(data) {
-  // Actualizar totales globales
   TOTAL = data.total;
 
-  // Actualizar pills del header
-  document.getElementById('pill-fp').textContent    = data.filepath;
-  document.getElementById('pill-even').textContent  = `PARES ${data.n_even}`;
-  document.getElementById('pill-odd').textContent   = `IMPARES ${data.n_odd}`;
-  document.getElementById('pill-prime').textContent = `PRIMOS ${data.n_prime}`;
-  document.getElementById('pill-even').style.display  = '';
-  document.getElementById('pill-odd').style.display   = '';
-  document.getElementById('pill-prime').style.display = '';
+  // Header: solo nombre del archivo y total de números
+  document.getElementById('pill-fp').textContent = `${data.filepath}  (${data.total} núms)`;
   document.getElementById('btn-change').style.display = '';
 
-  // Actualizar panel del productor
+  // Progreso del productor
   document.getElementById('prog-lbl').textContent = `0 / ${TOTAL}`;
-  document.getElementById('dist-even').textContent  = data.n_even;
-  document.getElementById('dist-odd').textContent   = data.n_odd;
-  document.getElementById('dist-prime').textContent = data.n_prime;
-
-  // Resetear progreso
   document.getElementById('prog-bar').style.width = '0%';
 
-  // Habilitar botón de inicio
+  // Habilitar inicio
   const btn = document.getElementById('btn-go');
   btn.disabled    = false;
   btn.textContent = '▶ INICIAR';
 
-  // Ocultar overlay de carga
   document.getElementById('upload-overlay').classList.remove('show');
 
-  // Log
   const skipMsg = data.skipped > 0 ? ` (${data.skipped} líneas omitidas)` : '';
   addLog(`Archivo cargado: ${data.filepath} — ${TOTAL} números${skipMsg}`, 'system', now());
 }
@@ -719,10 +668,10 @@ function setActor(key, state) {
 
   if (cardEl) {
     cardEl.className = 'card';
-    if      (state === 'critical') cardEl.classList.add('g-crit');
-    else if (state === 'blocked')  cardEl.classList.add('g-block');
-    else if (state === 'producing') cardEl.classList.add('g-pro');
-    else if (state === 'consuming' && a.kind) cardEl.classList.add('g-' + a.kind);
+    if      (state === 'critical')              cardEl.classList.add('g-crit');
+    else if (state === 'blocked')               cardEl.classList.add('g-block');
+    else if (state === 'producing')             cardEl.classList.add('g-pro');
+    else if (state === 'consuming' && a.kind)   cardEl.classList.add('g-' + a.kind);
   }
 }
 
@@ -733,6 +682,9 @@ function applyStates(states) {
 
 // ─────────────────────────────────────────────────────────────
 //  RENDER DEL BUFFER
+//  Los colores de los slots los asigna classify() en el frontend,
+//  igual que siempre — la clasificación solo existe aquí y en los
+//  consumidores, NUNCA en el productor.
 // ─────────────────────────────────────────────────────────────
 function renderBuffer(contents, criticalActor) {
   const wrap    = document.getElementById('buf-slots');
@@ -745,8 +697,8 @@ function renderBuffer(contents, criticalActor) {
   const bufCard = document.getElementById('card-buffer');
 
   const n = contents.length;
-  cnt.textContent = n + ' / ' + BUF_SIZE;
-  const p = Math.round(n / BUF_SIZE * 100);
+  cnt.textContent        = n + ' / ' + BUF_SIZE;
+  const p                = Math.round(n / BUF_SIZE * 100);
   level.style.width      = p + '%';
   pct.textContent        = p + '%';
   level.style.background = p >= 90 ? 'var(--red)' : p >= 60 ? 'var(--odd)' : 'var(--pro)';
@@ -811,13 +763,10 @@ function addLog(msg, kind, ts) {
 // ─────────────────────────────────────────────────────────────
 const socket = io();
 
-socket.on('connect', () =>
-  addLog('Conectado al servidor', 'system', now())
-);
+socket.on('connect', () => addLog('Conectado al servidor', 'system', now()));
 
 socket.on('ready', data => {
   renderBuffer(data.buffer || [], null);
-  // Si el servidor ya tenía un archivo cargado (reconexión)
   if (data.file_loaded && data.total > 0) {
     TOTAL = data.total;
     document.getElementById('prog-lbl').textContent = `0 / ${TOTAL}`;
@@ -832,8 +781,9 @@ socket.on('simulation_start', data => {
   applyStates(data.states);
   document.getElementById('btn-go').disabled    = true;
   document.getElementById('btn-go').textContent = '⟳ EJECUTANDO';
+  // El productor solo muestra el número crudo — sin etiqueta de tipo
   document.getElementById('snum-producer').textContent = '—';
-  document.getElementById('stag-producer').textContent = '';
+  document.getElementById('snum-producer').style.color = 'var(--pro)';
   ['even','odd','prime'].forEach(k => {
     document.getElementById('sum-'+k).textContent  = '0';
     document.getElementById('cnt-'+k).textContent  = '0 números';
@@ -846,11 +796,9 @@ socket.on('insert', data => {
   document.getElementById('prog-bar').style.width = (prodIdx / TOTAL * 100) + '%';
   document.getElementById('prog-lbl').textContent = `${prodIdx} / ${TOTAL}`;
 
-  const col = KIND_COLOR[data.kind];
-  flashNum('snum-producer', data.num, col);
-  document.getElementById('stag-producer').textContent =
-    {even:'PAR', odd:'IMPAR', prime:'PRIMO'}[data.kind];
-  document.getElementById('stag-producer').style.color = col;
+  // El productor muestra el número en color neutro (verde del productor),
+  // sin revelar su clasificación — eso lo descubren los consumidores.
+  flashNum('snum-producer', data.num, 'var(--pro)');
 
   renderBuffer(data.buffer, data.critical);
   applyStates(data.states);
@@ -862,7 +810,6 @@ socket.on('take', data => {
   document.getElementById('sum-' + data.consumer).textContent = data.sum;
   document.getElementById('cnt-' + data.consumer).textContent =
     data.count + ' número' + (data.count !== 1 ? 's' : '');
-
   renderBuffer(data.buffer, data.critical);
   applyStates(data.states);
 });
@@ -886,6 +833,7 @@ socket.on('log', data => addLog(data.msg, data.kind, data.ts));
 
 socket.on('simulation_end', data => {
   document.getElementById('btn-go').textContent = '✓ COMPLETADO';
+  // Resumen final — aquí sí se revelan los totales por tipo
   ['even','odd','prime'].forEach(k => {
     document.getElementById('f-sum-'+k).textContent = data.sums[k];
     document.getElementById('f-cnt-'+k).textContent = data.counts[k] + ' núms';
@@ -893,18 +841,13 @@ socket.on('simulation_end', data => {
   setTimeout(() => document.getElementById('final-overlay').classList.add('show'), 1400);
 });
 
-socket.on('error', data => {
-  addLog('⚠ ' + data.msg, 'system', now());
-});
+socket.on('error', data => addLog('⚠ ' + data.msg, 'system', now()));
 
 // ─────────────────────────────────────────────────────────────
 //  ACCIONES DE USUARIO
 // ─────────────────────────────────────────────────────────────
-function startSim() {
-  socket.emit('start');
-}
+function startSim() { socket.emit('start'); }
 
-/** Reinicia la UI pero reutiliza el mismo archivo ya cargado en el servidor. */
 function restartSameFile() {
   document.getElementById('final-overlay').classList.remove('show');
   const btn = document.getElementById('btn-go');
@@ -914,7 +857,6 @@ function restartSameFile() {
   document.getElementById('prog-bar').style.width   = '0%';
   document.getElementById('prog-lbl').textContent   = `0 / ${TOTAL}`;
   document.getElementById('snum-producer').textContent = '—';
-  document.getElementById('stag-producer').textContent = '';
   document.getElementById('log-body').innerHTML = '';
   ['even','odd','prime'].forEach(k => {
     document.getElementById('sum-'+k).textContent = '0';
@@ -926,29 +868,23 @@ function restartSameFile() {
   renderBuffer([], null);
 }
 
-/** Muestra el overlay de carga para seleccionar un nuevo archivo. */
 function changeFile() {
   document.getElementById('final-overlay').classList.remove('show');
   document.getElementById('upload-overlay').classList.add('show');
   upStatus.textContent = '';
   fileInput.value      = '';
-
-  // Resetear UI
   const btn = document.getElementById('btn-go');
   btn.disabled    = true;
   btn.textContent = '▶ INICIAR';
-  prodIdx = 0;
-  TOTAL   = 0;
+  prodIdx = 0; TOTAL = 0;
   document.getElementById('prog-bar').style.width   = '0%';
   document.getElementById('prog-lbl').textContent   = '— / —';
   document.getElementById('snum-producer').textContent = '—';
-  document.getElementById('stag-producer').textContent = '';
   document.getElementById('log-body').innerHTML = '';
   ['even','odd','prime'].forEach(k => {
     document.getElementById('sum-'+k).textContent = '0';
     document.getElementById('cnt-'+k).textContent = '0 números';
     document.getElementById('snum-consumer-'+k).textContent = '—';
-    document.getElementById('dist-'+k).textContent = '—';
     setActor('consumer_'+k, 'idle');
   });
   setActor('producer', 'idle');
