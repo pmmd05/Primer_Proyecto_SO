@@ -5,31 +5,37 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Filósofos Comensales — SO / URL</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="/imagenes/pensando.png">
+<link href="https://fonts.googleapis.com/css2?family=Pathway+Gothic+One&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <style>
 /* ── Variables ─────────────────────────────────────────────── */
 :root {
-  --bg:      #0a0705;
-  --bg1:     #110e08;
-  --bg2:     #1a1408;
-  --bg3:     #231c0e;
-  --border:  #2e2210;
-  --bord2:   #45330f;
-  --gold:    #d4a017;
-  --gold2:   #f0c040;
-  --amber:   #ff9500;
-  --red:     #ff4444;
-  --green:   #44cc88;
+  --bg:      #1a1c1e;
+  --bg1:     #22262b;
+  --bg2:     #2b3038;
+  --bg3:     #343c46;
+  --border:  #3a424e;
+  --bord2:   #5a6678;
+  --gold:    #b8c8d8;
+  --gold2:   #dce8f0;
+  --amber:   #a8c4d8;
+  --red:     #cf6679;
+  --green:   #6abf94;
   --blue:    #44aaff;
-  --txt:     #e8d8b0;
-  --dim:     #6b5a30;
-  --white:   #fff8ee;
-  --table:   #3d2810;
-  --table2:  #5a3c18;
-  --fh: 'Cinzel', serif;
+  --txt:     #c8d4dc;
+  --dim:     #5a6878;
+  --white:   #e8f0f4;
+  --table:   #2a3038;
+  --table2:  #3c4856;
+  --marble-light: #ccd8e0;
+  --marble-mid:   #8fa0b0;
+  --marble-dark:  #3c4858;
+  --fh: 'Pathway Gothic One', sans-serif;
   --fm: 'JetBrains Mono', monospace;
 }
+
+
 *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; width: 100%; }
 body {
@@ -49,9 +55,36 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse at 20% 20%, rgba(212,160,23,.04) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 80%, rgba(255,149,0,.04) 0%, transparent 60%),
-    radial-gradient(ellipse at 50% 50%, rgba(10,7,5,0) 0%, rgba(10,7,5,.5) 100%);
+    repeating-linear-gradient(
+      118deg,
+      transparent 0px, transparent 120px,
+      rgba(180,200,220,.025) 120px, rgba(180,200,220,.025) 122px,
+      transparent 122px, transparent 260px,
+      rgba(140,170,195,.018) 260px, rgba(140,170,195,.018) 263px,
+      transparent 263px, transparent 420px
+    ),
+    repeating-linear-gradient(
+      47deg,
+      transparent 0px, transparent 200px,
+      rgba(160,185,210,.015) 200px, rgba(160,185,210,.015) 201px,
+      transparent 201px, transparent 390px
+    ),
+    radial-gradient(ellipse at 15% 15%, rgba(70,95,120,.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 80%, rgba(50,75,100,.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(20,25,30,0) 0%, rgba(15,18,22,.6) 100%),
+    linear-gradient(160deg, #1e2228 0%, #191d24 40%, #1c2030 100%);
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .35;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 300px 300px;
 }
 
 /* ── Header ────────────────────────────────────────────────── */
@@ -64,35 +97,35 @@ header {
   gap: 12px; flex-wrap: wrap;
 }
 .logo {
-  font-family: var(--fh); font-size: 11px; font-weight: 900;
+  font-family: var(--fh); font-size: 30px; font-weight: 900;
   letter-spacing: 3px; color: var(--gold2); white-space: nowrap;
-  text-shadow: 0 0 20px rgba(212,160,23,.4);
+  text-shadow: 0 0 20px rgba(81, 187, 237, 0.4);
 }
 .hdr-r { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 /* Controls */
 .ctrl-group { display: flex; align-items: center; gap: 6px; }
 .ctrl-lbl {
-  font-family: var(--fh); font-size: 7px;
+  font-family: var(--fh); font-size: 11px;
   letter-spacing: 2px; color: var(--dim);
 }
 .ctrl-input {
   width: 52px; padding: 4px 6px;
   background: var(--bg2); border: 1px solid var(--bord2);
   color: var(--gold2); font-family: var(--fm);
-  font-size: 11px; border-radius: 4px; text-align: center;
+  font-size: 13px; border-radius: 4px; text-align: center;
 }
 .ctrl-input:focus { outline: none; border-color: var(--gold); }
 
 .btn-go {
-  font-family: var(--fh); font-size: 8px; letter-spacing: 2px; font-weight: 600;
+  font-family: var(--fh); font-size: 11px; letter-spacing: 2px; font-weight: 600;
   padding: 8px 18px; border: 1px solid var(--gold);
-  background: rgba(212,160,23,.08); color: var(--gold2);
+  background: rgba(255, 255, 255, 0.407); color: var(--gold2);
   border-radius: 5px; cursor: pointer; transition: all .2s;
 }
 .btn-go:hover:not(:disabled) {
-  background: rgba(212,160,23,.2);
-  box-shadow: 0 0 20px rgba(212,160,23,.25);
+  background: rgba(255, 255, 255, 0.407);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.407);
 }
 .btn-go:disabled { opacity: .35; cursor: default; }
 
@@ -114,18 +147,33 @@ header {
   width: 200px; height: 200px;
   transform: translate(-50%,-50%);
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 38% 35%, var(--table2) 0%, var(--table) 60%, #1e0f00 100%);
-  border: 3px solid var(--bord2);
+   background:
+    repeating-linear-gradient(
+      125deg,
+      transparent 0px, transparent 18px,
+      rgba(200,220,235,.04) 18px, rgba(200,220,235,.04) 20px,
+      transparent 20px, transparent 45px
+    ),
+    repeating-linear-gradient(
+      55deg,
+      transparent 0px, transparent 30px,
+      rgba(160,185,210,.03) 30px, rgba(160,185,210,.03) 31px,
+      transparent 31px, transparent 70px
+    ),
+    radial-gradient(circle at 38% 32%, #3c4e62 0%, #28343f 45%, #1a2430 100%);
+  border: 2px solid #4a5e72;
   box-shadow:
-    0 0 0 1px #6b4a1a,
-    0 8px 40px rgba(0,0,0,.7),
-    inset 0 2px 8px rgba(255,180,60,.08);
+    0 0 0 1px rgba(180,210,230,.08),
+    0 0 0 6px rgba(30,40,55,.5),
+    0 0 0 7px rgba(80,100,125,.12),
+    0 8px 50px rgba(0,0,0,.75),
+    inset 0 2px 12px rgba(160,200,230,.06),
+    inset 0 -3px 10px rgba(0,0,0,.4);
   display: flex; align-items: center; justify-content: center;
 }
 .table-text {
-  font-family: var(--fh); font-size: 9px; letter-spacing: 2px;
-  color: rgba(212,160,23,.45); text-align: center; line-height: 1.6;
+  font-family: var(--fh); font-size: 30px; letter-spacing: 2px;
+  color: rgb(255, 255, 255); text-align: center; line-height: 1.6;
 }
 
 /* ── PHILOSOPHER SEAT ───────────────────────────────────────── */
@@ -151,22 +199,22 @@ header {
   width: 58px; height: 58px; object-fit: contain; border-radius: 6px;
   transition: filter .3s, transform .3s;
 }
-.phil-img.s-thinking { filter: brightness(.75) sepia(.3); transform: scale(.95); }
-.phil-img.s-waiting  { filter: brightness(.9) sepia(.1) drop-shadow(0 0 5px var(--amber)); transform: scale(1); }
-.phil-img.s-eating   { filter: brightness(1.1) drop-shadow(0 0 10px var(--gold2)); transform: scale(1.06); }
-.phil-img.s-done     { filter: grayscale(1) brightness(.5); }
-.phil-img.s-idle     { filter: brightness(.5); transform: scale(.9); }
+.phil-img.s-thinking { filter: brightness(.85) saturate(.5) hue-rotate(180deg); transform: scale(.95); }
+.phil-img.s-waiting  { filter: brightness(1.0) saturate(.6) hue-rotate(160deg); transform: scale(1); }
+.phil-img.s-eating   { filter: brightness(1.15) saturate(.6) hue-rotate(170deg) drop-shadow(0 0 8px rgba(180,215,235,.5)); transform: scale(1.06); }
+.phil-img.s-done     { filter: grayscale(1) brightness(.6); }
+.phil-img.s-idle     { filter: brightness(.65) saturate(.35); transform: scale(.9); }
 
 .phil-name {
-  font-family: var(--fh); font-size: 8px; letter-spacing: 1px;
+  font-family: var(--fh); font-size: 15px; letter-spacing: 1px;
   color: var(--gold); text-align: center; white-space: nowrap;
 }
 .phil-state-lbl {
-  font-family: var(--fh); font-size: 6.5px; letter-spacing: 1.5px;
+  font-family: var(--fh); font-size: 12px; letter-spacing: 1.5px;
   height: 12px; text-align: center; transition: color .2s;
 }
 .phil-eats {
-  font-size: 9px; color: var(--dim); font-family: var(--fh);
+  font-size: 11px; color: var(--dim); font-family: var(--fh);
 }
 .phil-eats b { color: var(--gold2); }
 
@@ -195,9 +243,9 @@ header {
   pointer-events: none;
   user-select: none;
 }
-.fork-side.free { filter: brightness(.40); }
+.fork-side.free { filter: brightness(.70); }
 .fork-side.held {
-  filter: brightness(1.5) drop-shadow(0 0 9px var(--gold2));
+  filter: brightness(1.9) drop-shadow(0 0 9px var(--gold2));
 }
 
 @keyframes forkGrab {
@@ -214,7 +262,7 @@ header {
 .stat-chip {
   display: flex; align-items: center; gap: 5px;
   padding: 4px 10px; background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 20px; font-family: var(--fh); font-size: 8px; letter-spacing: 1px;
+  border-radius: 20px; font-family: var(--fh); font-size: 10px; letter-spacing: 1px;
 }
 .stat-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); }
 .stat-chip.s-thinking .stat-dot { background: var(--blue); }
@@ -232,11 +280,11 @@ header {
 }
 .log-hdr {
   padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
-  font-family: var(--fh); font-size: 7px; letter-spacing: 2px; color: var(--gold);
+  font-family: var(--fh); font-size: 11px; letter-spacing: 2px; color: var(--gold);
   display: flex; align-items: center; justify-content: space-between;
 }
 .log-clr {
-  font-size: 7px; background: none; border: 1px solid var(--border);
+  font-size: 11px; background: none; border: 1px solid var(--border);
   color: var(--dim); border-radius: 3px; padding: 2px 7px;
   cursor: pointer; font-family: var(--fh); letter-spacing: 1px;
 }
@@ -248,10 +296,10 @@ header {
 .log-row {
   display: flex; gap: 8px; padding: 3px 12px;
   border-bottom: 1px solid var(--border);
-  font-size: 10px; animation: logIn .12s ease;
+  font-size: 13px; animation: logIn .12s ease;
 }
 @keyframes logIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
-.log-ts   { color: var(--dim); min-width: 58px; font-size: 9px; flex-shrink: 0; }
+.log-ts   { color: var(--dim); min-width: 58px; font-size:12px; flex-shrink: 0; }
 .c-system { color: var(--dim); font-style: italic; }
 
 /* ── OVERLAY FINAL ──────────────────────────────────────────── */
@@ -272,19 +320,19 @@ header {
   to   { transform: scale(1); opacity: 1; }
 }
 .fin-title {
-  font-family: var(--fh); font-size: 11px; letter-spacing: 4px;
+  font-family: var(--fh); font-size: 17px; letter-spacing: 4px;
   color: var(--gold2); margin-bottom: 20px;
   text-shadow: 0 0 20px rgba(240,192,64,.3);
 }
 .fin-row {
   display: flex; align-items: center; justify-content: space-between;
   background: var(--bg2); border-radius: 7px; padding: 9px 14px; margin-bottom: 7px;
-  font-family: var(--fh); font-size: 8px; letter-spacing: 2px;
+  font-family: var(--fh); font-size: 12px; letter-spacing: 2px;
 }
-.fin-val  { font-family: var(--fh); font-size: 17px; font-weight: 900; color: var(--gold2); }
+.fin-val  { font-family: var(--fh); font-size: 22px; font-weight: 900; color: var(--gold2); }
 .fin-sub  { font-size: 8px; color: var(--dim); }
 .btn-rst {
-  font-family: var(--fh); font-size: 7px; letter-spacing: 2px; margin-top: 14px;
+  font-family: var(--fh); font-size: 10px; letter-spacing: 2px; margin-top: 14px;
   padding: 9px 20px; border: 1px solid var(--bord2); background: var(--bg2);
   color: var(--txt); border-radius: 6px; cursor: pointer; transition: all .2s;
 }
@@ -364,8 +412,8 @@ const DEFAULT_CYC = simConfig.defaultCycles;
 
 // Paleta de colores por filósofo
 const PHIL_COLORS = [
-  '#44aaff','#44cc88','#ffb300','#ff6eb4','#ff5555',
-  '#a78bfa','#34d399','#fbbf24','#60a5fa','#f87171',
+  '#7ec8e3','#4fa8d5','#a8d8ea','#5bbfdb','#3a9abf',
+  '#8ecae6','#2a8ab0','#b0dff0','#6ab4d4','#44a0c8',
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -447,14 +495,11 @@ function buildScene(n, names) {
     // Con solo 2 filósofos, ambos midpoints colapsan al centro de la mesa.
     // Se desplazan perpendicularmente al eje que conecta a los dos filósofos.
     if (n === 2) {
-      const ax = pi.x - pj.x, ay = pi.y - pj.y;
-      const len = Math.sqrt(ax * ax + ay * ay);
-      // Vector perpendicular unitario (rotación 90° del eje principal)
-      const perpX = -ay / len, perpY = ax / len;
-      const offset = R * 0.42;
-      const sign = (i === 0) ? 1 : -1;
-      fx += sign * perpX * offset;
-      fy += sign * perpY * offset;
+      const mesaCx = cx;
+      const mesaCy = cy;
+      const lateralOffset = R * 0.55;
+      fx = mesaCx + (i === 0 ? lateralOffset : -lateralOffset);
+      fy = mesaCy;
     }
 
     // Rotación: atan2 del vector pj→pi para orientar el emoji a lo largo de la cuerda
@@ -567,7 +612,8 @@ function updateForks(forkHeld, forkBy) {
     } else {
       el.className = 'fork-side free';
       el.style.transform = `rotate(${baseRot}deg) scale(1)`;
-      el.style.filter    = `brightness(.40)`;
+      el.style.filter = `brightness(1.8) drop-shadow(0 0 9px var(--gold2))`;
+      el.style.filter = `brightness(.65)`;
     }
   }
 }
@@ -648,9 +694,9 @@ socket.on('simulation_end', data => {
     const row = document.createElement('div');
     row.className = 'fin-row';
     row.innerHTML = `
-      <span style="color:${PHIL_COLORS[i % PHIL_COLORS.length]}">${names[i]}</span>
-      <span style="font-size:8px;color:var(--dim);font-family:var(--fm)">${bar}</span>
-      <span class="fin-val">${c}</span>`;
+        <span style="color:${PHIL_COLORS[i % PHIL_COLORS.length]};min-width:80px">${names[i]}</span>
+        <span style="font-size:8px;color:var(--gold);font-family:var(--fm);flex:1;text-align:center">${bar}</span>
+        <span class="fin-val">${c}</span>`;
     rows.appendChild(row);
   });
 
@@ -676,7 +722,7 @@ function restartUI() {
   document.getElementById('log-body').innerHTML = '';
   const n = parseInt(document.getElementById('inp-n').value) || DEFAULT_N;
   buildScene(n, ALL_NAMES.slice(0, n));
-  document.getElementById('table-text').innerHTML = 'MESA<br>CIRCULAR';
+  document.getElementById('table-text').innerHTML = '<b>MESA<br>CIRCULAR</b>';
 }
 
 // Reconstruir escena cuando cambia N antes de iniciar
