@@ -4,923 +4,352 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Productor-Consumidor — SO / URL</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pathway+Gothic+One&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <style>
-/* ── Variables ─────────────────────────────────────────────── */
 :root {
-  --bg:      #1a1c1e;
-  --bg1:     #22262b;
-  --bg2:     #2b3038;
-  --bg3:     #343c46;
-  --border:  #3a424e;
-  --bord2:   #5a6678;
-  --txt:     #c8d4dc;
-  --dim:     #5a6878;
-  --white:   #e8f0f4;
-  --marble-light: #ccd8e0;
-  --marble-mid:   #8fa0b0;
-  --pro:    #7ec8e3;
-  --even:   #6abf9a;
-  --odd:    #a8b8d0;
-  --prime:  #9fb0c8;
-  --red:    #cf6679;
-  --crit:   #dce8f0;
-  --fh: 'Pathway Gothic One', sans-serif;
-  --fm: 'JetBrains Mono', monospace;
+  --bg:#1a1c1e; --bg1:#22262b; --bg2:#2b3038; --bg3:#343c46;
+  --bord:#3a424e; --bord2:#5a6678; --txt:#c8d4dc; --dim:#5a6878;
+  --pro:#7ec8e3; --even:#6abf9a; --odd:#a8b8d0; --prime:#9fb0c8;
+  --red:#cf6679; --crit:#dce8f0;
+  --fh:'Pathway Gothic One',sans-serif; --fm:'JetBrains Mono',monospace;
 }
-*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: var(--bg); color: var(--txt);
-  font-family: var(--fm); font-size: 12px;
-  min-height: 100vh; overflow-x: hidden;
-}
-body::before {
-  content: ''; position: fixed; inset: 0;
-  pointer-events: none; z-index: 0;
-  background:
-    repeating-linear-gradient(
-      118deg,
-      transparent 0px, transparent 120px,
-      rgba(180,200,220,.025) 120px, rgba(180,200,220,.025) 122px,
-      transparent 122px, transparent 260px,
-      rgba(140,170,195,.018) 260px, rgba(140,170,195,.018) 263px,
-      transparent 263px, transparent 420px
-    ),
-    repeating-linear-gradient(
-      47deg,
-      transparent 0px, transparent 200px,
-      rgba(160,185,210,.015) 200px, rgba(160,185,210,.015) 201px,
-      transparent 201px, transparent 390px
-    ),
-    radial-gradient(ellipse at 15% 15%, rgba(70,95,120,.18) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 80%, rgba(50,75,100,.14) 0%, transparent 50%),
-    linear-gradient(160deg, #1e2228 0%, #191d24 40%, #1c2030 100%);
-}
-body::after {
-  content: ''; position: fixed; inset: 0;
-  pointer-events: none; z-index: 0; opacity: .35;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
-  background-size: 300px 300px;
-}
-/* ── Header ─────────────────────────────────────────────────── */
-header {
-  position: sticky; top: 0; z-index: 200;
-  background: rgba(22,26,32,.97);
-  box-shadow: 0 1px 0 rgba(180,210,230,.06), 0 2px 20px rgba(0,0,0,.4);
-  border-bottom: 1px solid var(--bord2);
-  padding: 8px 18px;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap;
-}
-.logo { font-family: var(--fh); font-size: 15px; font-weight: 900; letter-spacing: 3px; white-space: nowrap; }
-.logo b { color: var(--pro); }
-.hdr-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
-.pill {
-  padding: 4px 12px; border-radius: 20px; font-size: 13px;
-  letter-spacing: 1px; border: 1px solid; font-family: var(--fh); font-weight: 700;
-}
-/* Solo la pill del nombre de archivo — sin pills de conteo por tipo */
-.p-fp    { color: var(--dim);   border-color: var(--border); }
-
-.btn-upload {
-  font-family: var(--fh); font-size: 13px; letter-spacing: 2px; font-weight: 600;
-  padding: 6px 12px; border: 1px solid var(--bord2); background: rgba(255,255,255,.04);
-  color: var(--dim); border-radius: 5px; cursor: pointer; transition: all .2s;
-}
-.btn-upload:hover { border-color: var(--even); color: var(--even); }
-
-.btn-go {
-  font-family: var(--fh); font-size: 11px; letter-spacing: 3px; font-weight: 700;
-  padding: 8px 18px; border: 1px solid var(--pro); background: rgba(0,255,153,.06);
-  color: var(--pro); border-radius: 6px; cursor: pointer; transition: all .2s;
-}
-.btn-go:hover:not(:disabled) { background: rgba(0,255,153,.18); box-shadow: 0 0 18px rgba(0,255,153,.2); }
-.btn-go:disabled { opacity: .35; cursor: default; }
-
-/* ── Page ───────────────────────────────────────────────────── */
-.page { position: relative; z-index: 1; }
-
-/* ── Main layout ────────────────────────────────────────────── */
-.main-grid {
-  display: grid;
-  grid-template-columns: 220px 1fr 220px;
-  gap: 12px; padding: 12px 16px;
-  max-width: 1360px; margin: 0 auto;
-}
-@media (max-width: 860px) { .main-grid { grid-template-columns: 1fr; } }
-
-/* ── Card ───────────────────────────────────────────────────── */
-.card {
-  background:
-    repeating-linear-gradient(
-      135deg,
-      transparent 0px, transparent 25px,
-      rgba(180,205,225,.02) 25px, rgba(180,205,225,.02) 26px,
-      transparent 26px, transparent 55px
-    ),
-    linear-gradient(160deg, #272f3a 0%, #1e2530 100%);
-  border-radius: 10px; overflow: hidden; transition: border-color .25s, box-shadow .25s;
-}
-.card-hdr {
-  padding: 7px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
-  font-family: var(--fh); font-size: 13px; letter-spacing: 2px; font-weight: 700;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.card-body { padding: 12px; }
-
-.card.g-pro   { border-color: var(--pro)   !important; box-shadow: 0 0 20px rgba(0,255,153,.12) !important; }
-.card.g-even  { border-color: var(--even)  !important; box-shadow: 0 0 20px rgba(0,212,255,.12) !important; }
-.card.g-odd   { border-color: var(--odd)   !important; box-shadow: 0 0 20px rgba(255,179,0,.12) !important; }
-.card.g-prime { border-color: var(--prime) !important; box-shadow: 0 0 20px rgba(255,61,120,.12) !important; }
-.card.g-crit  { border-color: var(--white) !important; box-shadow: 0 0 24px rgba(255,255,255,.14) !important; }
-.card.g-block { border-color: var(--red)   !important; box-shadow: 0 0 18px rgba(255,68,85,.16) !important; }
-
-/* ── State image ────────────────────────────────────────────── */
-.actor-img-wrap {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 8px 0 6px;
-}
-.state-img { filter: brightness(.55) saturate(.2); width: 90px; height: 90px;}
-.state-img.s-producing { filter: brightness(1.0) saturate(.5) hue-rotate(170deg) drop-shadow(0 0 8px var(--pro)); }
-.state-img.s-consuming { filter: brightness(1.0) saturate(.5) hue-rotate(160deg); }
-.state-img.s-blocked   { filter: brightness(.8) saturate(.3) hue-rotate(180deg) drop-shadow(0 0 8px var(--red)); }
-.state-img.s-critical  { filter: brightness(1.05) saturate(.4) hue-rotate(170deg) drop-shadow(0 0 10px var(--crit)); transform: scale(1.04); }
-.state-img.s-done      { filter: grayscale(1) brightness(.45); }
-.state-img.s-waiting   { filter: brightness(.65) saturate(.2); opacity: .7; }
-.state-img.s-idle      { filter: brightness(.55) saturate(.2); opacity: .6; }
-.state-lbl {
-  font-family: var(--fh); font-size: 15px; letter-spacing: 2px;
-  text-align: center; height: 14px; transition: color .2s;
-}
-.state-num {
-  font-family: var(--fh); font-size: 22px; font-weight: 900;
-  text-align: center; min-height: 36px;
-  display: flex; align-items: center; justify-content: center;
-  transition: color .2s;
-}
-@keyframes numPop {
-  0%   { transform: scale(1.5); opacity: .3; }
-  100% { transform: scale(1);   opacity: 1; }
-}
-.pop { animation: numPop .3s cubic-bezier(.34,1.56,.64,1); }
-
-/* ── Progress bar ───────────────────────────────────────────── */
-.prog-wrap { margin-top: 8px; }
-.prog-rail { height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.prog-bar  { height: 100%; background: var(--pro); border-radius: 2px; width: 0%; transition: width .4s ease; }
-.prog-lbl  { text-align: center; font-size: 9px; color: var(--dim); margin-top: 4px; letter-spacing: 1px; }
-
-/* ── Sum box ────────────────────────────────────────────────── */
-.sum-box {
-  margin-top: 8px; background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 7px; padding: 8px; text-align: center;
-}
-.sum-val { font-family: var(--fh); font-size: 24px; font-weight: 700; transition: color .2s; }
-.sum-sub { font-size: 12px; color: var(--dim); letter-spacing: 1.5px; margin-top: 2px; }
-
-/* ── Buffer center ──────────────────────────────────────────── */
-.buf-arrows {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 0 4px; font-size: 12px; color: var(--dim);
-  letter-spacing: 1px; font-family: var(--fh);
-}
-.arr-in  { color: var(--pro); }
-.arr-out { color: var(--even); }
-
-.buf-slots {
-  display: grid; grid-template-columns: repeat(10, 1fr);
-  gap: 4px; padding: 10px 8px;
-  background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
-}
-.slot {
-  aspect-ratio: 1; border-radius: 6px;
-  border: 1px solid var(--border); background: var(--bg3);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--fh); font-size: 9px; font-weight: 700;
-  color: transparent; transition: all .2s; position: relative;
-}
-.slot.front::after {
-  content: '▲'; position: absolute; bottom: -13px; left: 50%;
-  transform: translateX(-50%); font-size: 7px; color: var(--white); opacity: .7;
-}
-.slot.occ-even     { background: rgba(0,212,255,.15);  border-color: var(--even);  color: var(--even); }
-.slot.occ-odd      { background: rgba(255,179,0,.15);  border-color: var(--odd);   color: var(--odd); }
-.slot.occ-prime    { background: rgba(255,61,120,.15); border-color: var(--prime); color: var(--prime); }
-.slot.occ-critical { border-color: #fff !important; box-shadow: 0 0 10px rgba(255,255,255,.3); }
-
-@keyframes slotIn {
-  from { transform: scale(.3) rotate(-10deg); opacity: 0; }
-  to   { transform: scale(1) rotate(0); opacity: 1; }
-}
-.slot.anim-in { animation: slotIn .28s cubic-bezier(.34,1.56,.64,1); }
-
-.buf-stats {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 10px; background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 7px; font-family: var(--fh); font-size: 12px; letter-spacing: 1px;
-}
-.buf-level-wrap { flex: 1; margin: 0 12px; }
-.buf-level-rail { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.buf-level-bar  { height: 100%; background: var(--pro); border-radius: 2px; transition: width .3s ease; }
-
-.front-lbl {
-  text-align: left; font-size: 8px; color: var(--dim);
-  font-family: var(--fh); letter-spacing: 1px; padding-left: 6px; margin-top: 14px;
-}
-.front-val { display: inline; color: var(--white); font-size: 10px; font-weight: 700; }
-
-/* ── Log ─────────────────────────────────────────────────────── */
-.log-sec { padding: 0 16px 16px; max-width: 1360px; margin: 0 auto; }
-.log-wrap { background: var(--bg1); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-.log-hdr {
-  padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
-  font-family: var(--fh); font-size: 12px; letter-spacing: 2px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.log-clr {
-  font-size: 12px; background: none; border: 1px solid var(--border); color: var(--dim);
-  border-radius: 3px; padding: 2px 7px; cursor: pointer; font-family: var(--fh); letter-spacing: 1px;
-}
-.log-clr:hover { border-color: var(--bord2); color: var(--txt); }
-.log-body { height: 160px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--bord2) transparent; }
-.log-row { display: flex; gap: 8px; padding: 4px 12px; border-bottom: 1px solid var(--border); font-size: 12px; animation: logIn .12s ease; }
-@keyframes logIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
-.log-ts  { color: var(--dim); min-width: 58px; font-size: 9px; flex-shrink: 0; }
-.c-producer { color: var(--pro); }
-.c-even     { color: var(--even); }
-.c-odd      { color: var(--odd); }
-.c-prime    { color: var(--prime); }
-.c-blocked  { color: var(--red); }
-.c-system   { color: var(--dim); font-style: italic; }
-
-/* ── OVERLAYS ──────────────────────────────────────────────── */
-.overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(8,8,16,.94); backdrop-filter: blur(14px);
-  z-index: 500; align-items: center; justify-content: center;
-}
-.overlay.show { display: flex; }
-
-/* Upload overlay */
-.upload-card {
-  background: var(--bg1); border: 1px solid var(--bord2);
-  border-radius: 16px; padding: 36px; max-width: 480px; width: 92%;
-  text-align: center; animation: cardIn .4s cubic-bezier(.34,1.56,.64,1);
-}
-@keyframes cardIn {
-  from { transform: scale(.88); opacity: 0; }
-  to   { transform: scale(1);   opacity: 1; }
-}
-.up-title {
-  font-family: var(--fh); font-size: 28px; font-weight: 900;
-  letter-spacing: 3px; color: var(--pro);
-  text-shadow: 0 0 24px rgba(0,255,153,.3); margin-bottom: 4px;
-}
-.up-subtitle {
-  font-family: var(--fh); font-size: 12px; letter-spacing: 3px;
-  color: var(--dim); margin-bottom: 28px;
-}
-.up-area {
-  border: 2px dashed var(--bord2); border-radius: 12px; padding: 32px 20px;
-  cursor: pointer; transition: all .25s; position: relative;
-  background: rgba(0,255,153,.02);
-}
-.up-area:hover, .up-area.drag-over {
-  border-color: var(--pro); background: rgba(0,255,153,.06);
-  box-shadow: 0 0 20px rgba(0,255,153,.1);
-}
-.up-area.drag-over { border-style: solid; }
-.up-icon { font-size: 36px; margin-bottom: 12px; }
-.up-text {
-  font-family: var(--fh); font-size: 12px; letter-spacing: 2px;
-  color: var(--dim); line-height: 2;
-}
-.up-area input[type="file"] {
-  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
-}
-.up-hint {
-  font-size: 12px; color: var(--dim); margin-top: 14px; letter-spacing: 1px;
-}
-.up-status {
-  margin-top: 14px; font-family: var(--fh); font-size: 8px;
-  letter-spacing: 2px; min-height: 20px;
-}
-.up-spinner {
-  display: inline-block; width: 14px; height: 14px;
-  border: 2px solid var(--bord2); border-top-color: var(--pro);
-  border-radius: 50%; animation: spin .6s linear infinite;
-  margin-right: 6px; vertical-align: middle;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Final overlay */
-.final-card {
-  background: var(--bg1); border: 1px solid var(--bord2); border-radius: 14px;
-  padding: 32px; max-width: 420px; width: 92%; text-align: center;
-  animation: cardIn .45s cubic-bezier(.34,1.56,.64,1);
-}
-.fin-title {
-  font-family: var(--fh); font-size: 15px; letter-spacing: 4px;
-  color: var(--pro); margin-bottom: 20px;
-}
-.fin-row {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--bg2); border-radius: 7px; padding: 10px 14px; margin-bottom: 8px;
-  font-family: var(--fh); font-size: 13px; letter-spacing: 2px;
-}
-.fin-sum { font-family: var(--fh); font-size: 22px; font-weight: 700; }
-.fin-cnt { font-size: 13px; color: var(--dim); margin-right: 8px; }
-.fin-btns { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
-.btn-rst {
-  font-family: var(--fh); font-size: 13px; letter-spacing: 2px;
-  padding: 9px 16px; border: 1px solid var(--bord2); background: var(--bg2);
-  color: var(--txt); border-radius: 6px; cursor: pointer; transition: all .2s;
-}
-.btn-rst:hover { border-color: var(--pro); color: var(--pro); }
-.btn-rst.alt:hover { border-color: var(--even); color: var(--even); }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:var(--fm);font-size:12px;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(118deg,transparent 0px,transparent 120px,rgba(180,200,220,.025) 120px,rgba(180,200,220,.025) 122px,transparent 122px,transparent 260px),
+  repeating-linear-gradient(47deg,transparent 0px,transparent 200px,rgba(160,185,210,.015) 200px,rgba(160,185,210,.015) 201px,transparent 201px,transparent 390px),
+  linear-gradient(160deg,#1e2228 0%,#191d24 40%,#1c2030 100%)}
+ 
+/* Header */
+header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px solid var(--bord2);
+  padding:8px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{font-family:var(--fh);font-size:15px;letter-spacing:3px;color:var(--txt)}
+.logo b{color:var(--pro)}
+.hdr-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{padding:4px 12px;border-radius:20px;font-size:12px;border:1px solid var(--bord);color:var(--dim);font-family:var(--fh);background:var(--bg2)}
+.btn-upload{font-family:var(--fh);font-size:12px;padding:6px 12px;border:1px solid var(--bord2);background:var(--bg2);color:var(--dim);border-radius:5px;cursor:pointer}
+.btn-upload:hover{color:var(--even);border-color:var(--even)}
+.btn-go{font-family:var(--fh);font-size:12px;letter-spacing:2px;padding:8px 18px;border:1px solid var(--pro);background:var(--bg2);color:var(--pro);border-radius:5px;cursor:pointer}
+.btn-go:hover:not(:disabled){background:var(--bg3)}
+.btn-go:disabled{opacity:.35;cursor:default}
+ 
+/* Layout */
+.page{position:relative;z-index:1}
+.main-grid{display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:12px 16px;max-width:1360px;margin:0 auto}
+@media(max-width:860px){.main-grid{grid-template-columns:1fr}}
+ 
+/* Card */
+.card{background:var(--bg1);border:1px solid var(--bord);border-radius:10px;overflow:hidden;transition:border-color .25s}
+.card-hdr{padding:7px 12px;background:var(--bg2);border-bottom:1px solid var(--bord);font-family:var(--fh);font-size:12px;letter-spacing:2px;display:flex;align-items:center;justify-content:space-between}
+.card-body{padding:12px}
+.card.g-pro{border-color:var(--pro)!important} .card.g-even{border-color:var(--even)!important}
+.card.g-odd{border-color:var(--odd)!important}  .card.g-prime{border-color:var(--prime)!important}
+.card.g-crit{border-color:var(--crit)!important} .card.g-block{border-color:var(--red)!important}
+ 
+/* Actor */
+.actor-img-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 6px}
+.state-img{width:90px;height:90px;object-fit:contain;border-radius:6px;filter:brightness(.55) saturate(.2);transition:filter .3s,transform .3s}
+.state-img.s-producing{filter:brightness(1) saturate(.5) hue-rotate(170deg)}
+.state-img.s-consuming{filter:brightness(1) saturate(.5) hue-rotate(160deg)}
+.state-img.s-blocked  {filter:brightness(.7) saturate(.3)}
+.state-img.s-critical {filter:brightness(1.05) saturate(.4);transform:scale(1.04)}
+.state-img.s-done     {filter:grayscale(1) brightness(.45)}
+.state-img.s-waiting  {filter:brightness(.6) saturate(.2)}
+.state-lbl{font-family:var(--fh);font-size:12px;letter-spacing:2px;text-align:center;height:14px}
+.state-num{font-family:var(--fh);font-size:22px;text-align:center;min-height:36px;display:flex;align-items:center;justify-content:center}
+@keyframes numPop{0%{transform:scale(1.5);opacity:.3}100%{transform:scale(1);opacity:1}}
+.pop{animation:numPop .3s ease}
+ 
+/* Barra progreso */
+.prog-wrap{margin-top:8px}
+.prog-rail{height:2px;background:var(--bord);border-radius:2px;overflow:hidden}
+.prog-bar{height:100%;background:var(--pro);width:0%;transition:width .4s ease}
+.prog-lbl{text-align:center;font-size:9px;color:var(--dim);margin-top:4px}
+ 
+/* Sum box */
+.sum-box{margin-top:8px;background:var(--bg2);border:1px solid var(--bord);border-radius:7px;padding:8px;text-align:center}
+.sum-val{font-family:var(--fh);font-size:22px}
+.sum-sub{font-size:11px;color:var(--dim);margin-top:2px}
+ 
+/* Buffer */
+.buf-arrows{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);font-family:var(--fh);letter-spacing:1px;padding:0 4px}
+.arr-in{color:var(--pro)} .arr-out{color:var(--even)}
+.buf-slots{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;padding:10px 8px;background:var(--bg2);border:1px solid var(--bord);border-radius:8px}
+.slot{aspect-ratio:1;border-radius:5px;border:1px solid var(--bord);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:9px;color:transparent;transition:all .2s;position:relative}
+.slot.front::after{content:'▲';position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);font-size:7px;color:var(--txt);opacity:.6}
+.slot.occ-even {background:rgba(106,191,154,.15);border-color:var(--even); color:var(--even)}
+.slot.occ-odd  {background:rgba(168,184,208,.15);border-color:var(--odd);  color:var(--odd)}
+.slot.occ-prime{background:rgba(159,176,200,.15);border-color:var(--prime);color:var(--prime)}
+.slot.occ-critical{border-color:var(--crit)}
+.buf-stats{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border:1px solid var(--bord);border-radius:7px;font-family:var(--fh);font-size:11px}
+.buf-level-wrap{flex:1;margin:0 12px}
+.buf-level-rail{height:3px;background:var(--bord);border-radius:2px;overflow:hidden}
+.buf-level-bar{height:100%;background:var(--pro);transition:width .3s ease}
+.front-lbl{font-size:9px;color:var(--dim);font-family:var(--fh);padding-left:6px;margin-top:14px}
+.front-val{color:var(--txt);font-size:11px}
+ 
+/* Log */
+.log-sec{padding:0 16px 16px;max-width:1360px;margin:0 auto}
+.log-wrap{background:var(--bg1);border:1px solid var(--bord);border-radius:10px;overflow:hidden}
+.log-hdr{padding:6px 12px;background:var(--bg2);border-bottom:1px solid var(--bord);font-family:var(--fh);font-size:12px;letter-spacing:2px;display:flex;align-items:center;justify-content:space-between}
+.log-clr{font-size:11px;background:none;border:1px solid var(--bord);color:var(--dim);border-radius:3px;padding:2px 7px;cursor:pointer;font-family:var(--fh)}
+.log-clr:hover{color:var(--txt);border-color:var(--bord2)}
+.log-body{height:160px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bord2) transparent}
+.log-row{display:flex;gap:8px;padding:4px 12px;border-bottom:1px solid var(--bord);font-size:11px}
+.log-ts{color:var(--dim);min-width:58px;font-size:9px;flex-shrink:0}
+.c-producer{color:var(--pro)} .c-even{color:var(--even)} .c-odd{color:var(--odd)}
+.c-prime{color:var(--prime)}  .c-blocked{color:var(--red)} .c-system{color:var(--dim);font-style:italic}
+ 
+/* Overlays */
+.overlay{display:none;position:fixed;inset:0;background:rgba(10,12,16,.92);backdrop-filter:blur(10px);z-index:500;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+@keyframes cardIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.upload-card,.final-card{background:var(--bg1);border:1px solid var(--bord2);border-radius:14px;padding:32px;width:92%;text-align:center;animation:cardIn .3s ease}
+.upload-card{max-width:480px} .final-card{max-width:400px}
+.up-title{font-family:var(--fh);font-size:26px;letter-spacing:3px;color:var(--pro);margin-bottom:4px}
+.up-subtitle{font-family:var(--fh);font-size:11px;letter-spacing:2px;color:var(--dim);margin-bottom:20px}
+.up-area{border:2px dashed var(--bord2);border-radius:10px;padding:28px 20px;cursor:pointer;transition:border-color .2s;position:relative;background:var(--bg2)}
+.up-area:hover,.up-area.drag-over{border-color:var(--pro)}
+.up-icon{font-size:34px;margin-bottom:10px}
+.up-text{font-family:var(--fh);font-size:11px;color:var(--dim);line-height:2}
+.up-area input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.up-hint{font-size:11px;color:var(--dim);margin-top:12px}
+.up-status{margin-top:12px;font-family:var(--fh);font-size:10px;min-height:20px}
+.up-spinner{display:inline-block;width:13px;height:13px;border:2px solid var(--bord2);border-top-color:var(--pro);border-radius:50%;animation:spin .6s linear infinite;margin-right:5px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fin-title{font-family:var(--fh);font-size:14px;letter-spacing:4px;color:var(--pro);margin-bottom:16px}
+.fin-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:7px;padding:9px 14px;margin-bottom:7px;font-family:var(--fh);font-size:12px;letter-spacing:1px}
+.fin-sum{font-family:var(--fh);font-size:20px} .fin-cnt{font-size:11px;color:var(--dim);margin-right:8px}
+.fin-btns{display:flex;gap:10px;justify-content:center;margin-top:14px}
+.btn-rst{font-family:var(--fh);font-size:12px;padding:8px 16px;border:1px solid var(--bord2);background:var(--bg2);color:var(--txt);border-radius:6px;cursor:pointer}
+.btn-rst:hover{border-color:var(--pro);color:var(--pro)} .btn-rst.alt:hover{border-color:var(--even);color:var(--even)}
 </style>
 </head>
 <body>
 <div class="page">
-
-<!-- ── UPLOAD OVERLAY (visible al inicio) ──────────────────── -->
+ 
 <div class="overlay show" id="upload-overlay">
   <div class="upload-card">
     <div class="up-title">PRODUCTOR-CONSUMIDOR</div>
     <div class="up-subtitle">SISTEMAS OPERATIVOS — UNIVERSIDAD RAFAEL LANDÍVAR</div>
-
     <div class="up-area" id="up-area">
       <div class="up-icon">📂</div>
-      <div class="up-text">
-        Arrastra tu archivo <b>.txt</b> aquí<br>
-        o haz click para seleccionar
-      </div>
+      <div class="up-text">Arrastra tu archivo <b>.txt</b> aquí<br>o haz click para seleccionar</div>
       <input type="file" id="file-input" accept=".txt,.TXT">
     </div>
-
-    <div class="up-hint">
-      El archivo debe contener un número entero por línea.<br>
-      Los consumidores clasifican automáticamente: primos → impares → pares.
-    </div>
+    <div class="up-hint">Un número entero por línea. Clasifica automáticamente: primos → impares → pares.</div>
     <div class="up-status" id="up-status"></div>
   </div>
 </div>
-
-<!-- ── FINAL OVERLAY ─────────────────────────────────────────── -->
+ 
 <div class="overlay" id="final-overlay">
   <div class="final-card">
     <div class="fin-title">✓ SIMULACIÓN COMPLETADA</div>
-    <div class="fin-row">
-      <span style="font-size:13px;color:var(--even)">PARES</span>
-      <span><span class="fin-cnt" id="f-cnt-even">0 núms</span>
-            <span class="fin-sum" id="f-sum-even" style="color:var(--even)">0</span></span>
-    </div>
-    <div class="fin-row">
-      <span style="font-size:13px;color:var(--odd)">IMPARES</span>
-      <span><span class="fin-cnt" id="f-cnt-odd">0 núms</span>
-            <span class="fin-sum" id="f-sum-odd" style="color:var(--odd)">0</span></span>
-    </div>
-    <div class="fin-row">
-      <span style="font-size:13px;color:var(--prime)">PRIMOS</span>
-      <span><span class="fin-cnt" id="f-cnt-prime">0 núms</span>
-            <span class="fin-sum" id="f-sum-prime" style="color:var(--prime)">0</span></span>
-    </div>
+    <div class="fin-row"><span style="color:var(--even)">PARES</span><span><span class="fin-cnt" id="f-cnt-even">0 núms</span><span class="fin-sum" id="f-sum-even" style="color:var(--even)">0</span></span></div>
+    <div class="fin-row"><span style="color:var(--odd)">IMPARES</span><span><span class="fin-cnt" id="f-cnt-odd">0 núms</span><span class="fin-sum" id="f-sum-odd" style="color:var(--odd)">0</span></span></div>
+    <div class="fin-row"><span style="color:var(--prime)">PRIMOS</span><span><span class="fin-cnt" id="f-cnt-prime">0 núms</span><span class="fin-sum" id="f-sum-prime" style="color:var(--prime)">0</span></span></div>
     <div class="fin-btns">
       <button class="btn-rst" onclick="restartSameFile()">↺ MISMO ARCHIVO</button>
       <button class="btn-rst alt" onclick="changeFile()">📂 CAMBIAR ARCHIVO</button>
     </div>
   </div>
 </div>
-
-<!-- ── HEADER ────────────────────────────────────────────────── -->
+ 
 <header>
-  <div class="logo">PRODUCTOR<b>-CONSUMIDOR</b>&nbsp;/&nbsp;SO — URL</div>
+  <div class="logo">PRODUCTOR<b>-CONSUMIDOR</b> / SO — URL</div>
   <div class="hdr-r">
-    <!-- Solo nombre del archivo; sin pills de conteo por tipo -->
-    <span class="pill p-fp" id="pill-fp">sin archivo</span>
+    <span class="pill" id="pill-fp">sin archivo</span>
     <button class="btn-upload" id="btn-change" style="display:none" onclick="changeFile()">📂 CAMBIAR</button>
     <button class="btn-go" id="btn-go" disabled onclick="startSim()">▶ INICIAR</button>
   </div>
 </header>
-
-<!-- ── MAIN GRID ─────────────────────────────────────────────── -->
+ 
 <div class="main-grid">
-
-<!-- ── LEFT: PRODUCTOR ───────────────────────────────────────── -->
-<div>
-  <div class="card" id="card-producer">
-    <div class="card-hdr">
-      <span style="color:var(--pro)">◈ PRODUCTOR</span>
-    </div>
-    <div class="card-body">
-      <div class="actor-img-wrap">
-        <img id="img-producer" class="state-img s-idle"
-             src="/imagenes/espera.png" alt="estado productor">
-        <div class="state-lbl" id="slbl-producer" style="color:var(--dim)">IDLE</div>
+  <div>
+    <div class="card" id="card-producer">
+      <div class="card-hdr"><span style="color:var(--pro)">◈ PRODUCTOR</span></div>
+      <div class="card-body">
+        <div class="actor-img-wrap">
+          <img id="img-producer" class="state-img s-idle" src="/imagenes/espera.png" alt="productor">
+          <div class="state-lbl" id="slbl-producer" style="color:var(--dim)">IDLE</div>
+        </div>
+        <div class="state-num" id="snum-producer" style="color:var(--pro)">—</div>
+        <div class="prog-wrap">
+          <div class="prog-rail"><div class="prog-bar" id="prog-bar"></div></div>
+          <div class="prog-lbl" id="prog-lbl">— / —</div>
+        </div>
       </div>
-      <!-- Solo el número producido sin etiqueta de clasificación -->
-      <div class="state-num" id="snum-producer" style="color:var(--pro)">—</div>
-      <!-- Barra de progreso: cuántos números se han insertado al buffer -->
-      <div class="prog-wrap">
-        <div class="prog-rail"><div class="prog-bar" id="prog-bar"></div></div>
-        <div class="prog-lbl" id="prog-lbl">— / —</div>
-      </div>
-      <!-- Sin distribución por tipo: eso es trabajo de los consumidores -->
     </div>
+  </div>
+ 
+  <div>
+    <div class="card" id="card-buffer">
+      <div class="card-hdr">
+        <span style="color:var(--txt)">▣ BUFFER COMPARTIDO</span>
+        <span id="buf-cnt" style="color:var(--dim);font-size:10px">0 / {{ buffer_size }}</span>
+      </div>
+      <div class="card-body">
+        <div class="buf-arrows"><span class="arr-in">PRODUCTOR → INSERTA AL FINAL</span><span class="arr-out">CONSUMIDORES TOMAN EL FRENTE →</span></div>
+        <div class="buf-slots" id="buf-slots"></div>
+        <div class="front-lbl" id="front-lbl" style="visibility:hidden">FRENTE: <span class="front-val" id="front-val">—</span><span id="front-kind" style="font-size:9px;margin-left:6px"></span></div>
+        <div class="buf-stats" style="margin-top:14px">
+          <span style="color:var(--dim)">OCUPACIÓN</span>
+          <div class="buf-level-wrap"><div class="buf-level-rail"><div class="buf-level-bar" id="buf-level"></div></div></div>
+          <span id="buf-pct" style="color:var(--pro);font-size:10px">0%</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:10px;justify-content:center;font-family:var(--fh);font-size:12px">
+          <span style="color:var(--even)">■ PAR</span><span style="color:var(--odd)">■ IMPAR</span><span style="color:var(--prime)">■ PRIMO</span>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <!-- Consumidores generados dinámicamente -->
   </div>
 </div>
-
-<!-- ── CENTER: BUFFER ────────────────────────────────────────── -->
-<div>
-  <div class="card" id="card-buffer">
-    <div class="card-hdr">
-      <span style="color:var(--white)">▣ BUFFER COMPARTIDO</span>
-      <span id="buf-cnt" style="font-size:11px;color:var(--dim);font-size:8px">0 / {{ buffer_size }}</span>
-    </div>
-    <div class="card-body">
-      <div class="buf-arrows">
-        <span class="arr-in">PRODUCTOR → INSERTA AL FINAL</span>
-        <span class="arr-out">CONSUMIDORES TOMAN EL FRENTE →</span>
-      </div>
-      <div class="buf-slots" id="buf-slots"></div>
-      <div class="front-lbl" id="front-lbl" style="visibility:hidden">
-        FRENTE: <span class="front-val" id="front-val">—</span>
-        <span id="front-kind" style="font-size:8px;margin-left:6px"></span>
-      </div>
-      <div class="buf-stats" style="margin-top:16px">
-        <span style="font-size:8px;letter-spacing:1px;color:var(--dim)">OCUPACIÓN</span>
-        <div class="buf-level-wrap">
-          <div class="buf-level-rail">
-            <div class="buf-level-bar" id="buf-level"></div>
-          </div>
-        </div>
-        <span id="buf-pct" style="color:var(--pro);font-size:9px">0%</span>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:10px;justify-content:center">
-        <span style="font-size:13px;color:var(--even);font-family:var(--fh);letter-spacing:1px">■ PAR</span>
-        <span style="font-size:13px;color:var(--odd);font-family:var(--fh);letter-spacing:1px">■ IMPAR</span>
-        <span style="font-size:13px;color:var(--prime);font-family:var(--fh);letter-spacing:1px">■ PRIMO</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── RIGHT: CONSUMIDORES ───────────────────────────────────── -->
-<div style="display:flex;flex-direction:column;gap:10px">
-
-  <!-- Consumer PARES -->
-  <div class="card" id="card-consumer-even">
-    <div class="card-hdr"><span style="color:var(--even)">◈ CONSUMIDOR PARES</span></div>
-    <div class="card-body">
-      <div class="actor-img-wrap" style="flex-direction:row;justify-content:flex-start;gap:10px;padding:4px 0">
-        <img id="img-consumer-even" class="state-img s-idle"
-             src="/imagenes/espera.png" alt="pares" style="width:64px;height:64px">
-        <div>
-          <div class="state-lbl" id="slbl-consumer-even" style="color:var(--dim);text-align:left">IDLE</div>
-          <div class="state-num" id="snum-consumer-even"
-               style="color:var(--even);font-size:18px;min-height:28px;justify-content:flex-start">—</div>
-        </div>
-      </div>
-      <div class="sum-box">
-        <div class="sum-sub">SUMA ACUMULADA</div>
-        <div class="sum-val" id="sum-even" style="color:var(--even)">0</div>
-        <div class="sum-sub" id="cnt-even" style="margin-top:2px">0 números</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Consumer IMPARES -->
-  <div class="card" id="card-consumer-odd">
-    <div class="card-hdr"><span style="color:var(--odd)">◈ CONSUMIDOR IMPARES</span></div>
-    <div class="card-body">
-      <div class="actor-img-wrap" style="flex-direction:row;justify-content:flex-start;gap:10px;padding:4px 0">
-        <img id="img-consumer-odd" class="state-img s-idle"
-             src="/imagenes/espera.png" alt="impares" style="width:64px;height:64px">
-        <div>
-          <div class="state-lbl" id="slbl-consumer-odd" style="color:var(--dim);text-align:left">IDLE</div>
-          <div class="state-num" id="snum-consumer-odd"
-               style="color:var(--odd);font-size:18px;min-height:28px;justify-content:flex-start">—</div>
-        </div>
-      </div>
-      <div class="sum-box">
-        <div class="sum-sub">SUMA ACUMULADA</div>
-        <div class="sum-val" id="sum-odd" style="color:var(--odd)">0</div>
-        <div class="sum-sub" id="cnt-odd" style="margin-top:2px">0 números</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Consumer PRIMOS -->
-  <div class="card" id="card-consumer-prime">
-    <div class="card-hdr"><span style="color:var(--prime)">◈ CONSUMIDOR PRIMOS</span></div>
-    <div class="card-body">
-      <div class="actor-img-wrap" style="flex-direction:row;justify-content:flex-start;gap:10px;padding:4px 0">
-        <img id="img-consumer-prime" class="state-img s-idle"
-             src="/imagenes/espera.png" alt="primos" style="width:64px;height:64px">
-        <div>
-          <div class="state-lbl" id="slbl-consumer-prime" style="color:var(--dim);text-align:left">IDLE</div>
-          <div class="state-num" id="snum-consumer-prime"
-               style="color:var(--prime);font-size:18px;min-height:28px;justify-content:flex-start">—</div>
-        </div>
-      </div>
-      <div class="sum-box">
-        <div class="sum-sub">SUMA ACUMULADA</div>
-        <div class="sum-val" id="sum-prime" style="color:var(--prime)">0</div>
-        <div class="sum-sub" id="cnt-prime" style="margin-top:2px">0 números</div>
-      </div>
-    </div>
-  </div>
-
-</div>
-</div><!-- /main-grid -->
-
-<!-- ── LOG ───────────────────────────────────────────────────── -->
+ 
 <div class="log-sec">
   <div class="log-wrap">
-    <div class="log-hdr">
-      <span>◉ REGISTRO DE EVENTOS</span>
-      <button class="log-clr" onclick="document.getElementById('log-body').innerHTML=''">LIMPIAR</button>
-    </div>
+    <div class="log-hdr"><span>◉ REGISTRO DE EVENTOS</span><button class="log-clr" onclick="document.getElementById('log-body').innerHTML=''">LIMPIAR</button></div>
     <div class="log-body" id="log-body"></div>
   </div>
 </div>
-
-</div><!-- /page -->
-
-<script id="sim-config" type="application/json">
-  {{ {"bufferSize": buffer_size} | tojson }}
-</script>
-
-<!-- ── JAVASCRIPT ────────────────────────────────────────────── -->
+</div>
+ 
+<script id="sim-config" type="application/json">{{ {"bufferSize": buffer_size} | tojson }}</script>
 <script>
-const simConfig = JSON.parse(document.getElementById('sim-config').textContent);
-const BUF_SIZE  = simConfig.bufferSize;
-let TOTAL   = 0;
-let prodIdx = 0;
-
-// ─────────────────────────────────────────────────────────────
-//  HELPERS DE CLASIFICACIÓN (espejo del backend — solo para
-//  colorear el buffer y el frente; nunca para el productor)
-// ─────────────────────────────────────────────────────────────
-function isPrime(n) {
-  if (n < 2) return false;
-  if (n === 2) return true;
-  if (n % 2 === 0) return false;
-  for (let i = 3; i <= Math.sqrt(n); i += 2) if (n % i === 0) return false;
-  return true;
-}
-function classify(n) {
-  if (isPrime(n))  return 'prime';
-  if (n % 2 === 0) return 'even';
-  return 'odd';
-}
-
-// ─────────────────────────────────────────────────────────────
-//  MAPAS DE ESTADO
-// ─────────────────────────────────────────────────────────────
-const IMG = {
-  idle:      '/imagenes/espera.png',
-  waiting:   '/imagenes/espera.png',
-  producing: '/imagenes/consumiendo.png',
-  consuming: '/imagenes/consumiendo.png',
-  blocked:   '/imagenes/bloqueado.png',
-  critical:  '/imagenes/seccion_critica.png',
-  done:      '/imagenes/espera.png',
-};
-const LBL = {
-  idle:      'IDLE',
-  waiting:   'EN ESPERA',
-  producing: 'PRODUCIENDO',
-  consuming: 'CONSUMIENDO',
-  blocked:   'BLOQUEADO ⚠',
-  critical:  'SECC. CRÍTICA',
-  done:      'TERMINADO ✓',
-};
-const KIND_COLOR = {
-  even:  'var(--even)',
-  odd:   'var(--odd)',
-  prime: 'var(--prime)',
-};
-
-const ACTORS = {
-  producer:       { img: 'img-producer',       lbl: 'slbl-producer',       num: 'snum-producer',       card: 'card-producer',       kind: null    },
-  consumer_even:  { img: 'img-consumer-even',  lbl: 'slbl-consumer-even',  num: 'snum-consumer-even',  card: 'card-consumer-even',  kind: 'even'  },
-  consumer_odd:   { img: 'img-consumer-odd',   lbl: 'slbl-consumer-odd',   num: 'snum-consumer-odd',   card: 'card-consumer-odd',   kind: 'odd'   },
-  consumer_prime: { img: 'img-consumer-prime', lbl: 'slbl-consumer-prime', num: 'snum-consumer-prime', card: 'card-consumer-prime', kind: 'prime' },
-};
-
-// ─────────────────────────────────────────────────────────────
-//  UPLOAD DE ARCHIVO
-// ─────────────────────────────────────────────────────────────
-const upArea    = document.getElementById('up-area');
-const fileInput = document.getElementById('file-input');
-const upStatus  = document.getElementById('up-status');
-
+const BUF_SIZE = JSON.parse(document.getElementById('sim-config').textContent).bufferSize;
+let TOTAL = 0, prodIdx = 0;
+ 
+// Clasificación
+const isPrime = n => { if(n<2)return false; if(n===2)return true; if(n%2===0)return false; for(let i=3;i<=Math.sqrt(n);i+=2)if(n%i===0)return false; return true; };
+const classify = n => isPrime(n)?'prime':n%2===0?'even':'odd';
+ 
+// Configuración de actores
+const KINDS = ['even','odd','prime'];
+const LABELS = {even:'PARES',odd:'IMPARES',prime:'PRIMOS'};
+const COLORS = {even:'var(--even)',odd:'var(--odd)',prime:'var(--prime)'};
+const IMG = {idle:'/imagenes/espera.png',waiting:'/imagenes/espera.png',producing:'/imagenes/consumiendo.png',consuming:'/imagenes/consumiendo.png',blocked:'/imagenes/bloqueado.png',critical:'/imagenes/seccion_critica.png',done:'/imagenes/espera.png'};
+const LBL = {idle:'IDLE',waiting:'EN ESPERA',producing:'PRODUCIENDO',consuming:'CONSUMIENDO',blocked:'BLOQUEADO ⚠',critical:'SECC. CRÍTICA',done:'TERMINADO ✓'};
+ 
+// Generar tarjetas de consumidores dinámicamente
+const consCol = document.querySelector('.main-grid > div:last-child');
+KINDS.forEach(k => {
+  consCol.innerHTML += `
+  <div class="card" id="card-consumer-${k}">
+    <div class="card-hdr"><span style="color:var(--${k})">◈ CONSUMIDOR ${LABELS[k]}</span></div>
+    <div class="card-body">
+      <div class="actor-img-wrap" style="flex-direction:row;justify-content:flex-start;gap:10px;padding:4px 0">
+        <img id="img-consumer-${k}" class="state-img s-idle" src="/imagenes/espera.png" alt="${k}" style="width:60px;height:60px">
+        <div>
+          <div class="state-lbl" id="slbl-consumer-${k}" style="color:var(--dim);text-align:left">IDLE</div>
+          <div class="state-num" id="snum-consumer-${k}" style="color:var(--${k});font-size:18px;min-height:28px;justify-content:flex-start">—</div>
+        </div>
+      </div>
+      <div class="sum-box">
+        <div class="sum-sub">SUMA ACUMULADA</div>
+        <div class="sum-val" id="sum-${k}" style="color:var(--${k})">0</div>
+        <div class="sum-sub" id="cnt-${k}">0 números</div>
+      </div>
+    </div>
+  </div>`;
+});
+ 
+// Upload
+const upArea = document.getElementById('up-area'), fileInput = document.getElementById('file-input'), upStatus = document.getElementById('up-status');
 upArea.addEventListener('dragover', e => { e.preventDefault(); upArea.classList.add('drag-over'); });
 upArea.addEventListener('dragleave', () => upArea.classList.remove('drag-over'));
-upArea.addEventListener('drop', e => {
-  e.preventDefault();
-  upArea.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) uploadFile(file);
-});
-fileInput.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (file) uploadFile(file);
-});
-
+upArea.addEventListener('drop', e => { e.preventDefault(); upArea.classList.remove('drag-over'); if(e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if(e.target.files[0]) uploadFile(e.target.files[0]); });
+ 
 async function uploadFile(file) {
-  upStatus.innerHTML   = '<span class="up-spinner"></span> Procesando...';
-  upStatus.style.color = 'var(--dim)';
-  const formData = new FormData();
-  formData.append('file', file);
+  upStatus.innerHTML = '<span class="up-spinner"></span> Procesando...';
+  const fd = new FormData(); fd.append('file', file);
   try {
-    const res  = await fetch('/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-    if (data.success) onFileLoaded(data);
+    const data = await (await fetch('/upload',{method:'POST',body:fd})).json();
+    if(data.success) onFileLoaded(data);
     else { upStatus.textContent = '⚠ ' + data.error; upStatus.style.color = 'var(--red)'; }
-  } catch {
-    upStatus.textContent = '⚠ Error de conexión con el servidor.';
-    upStatus.style.color = 'var(--red)';
-  }
+  } catch { upStatus.textContent = '⚠ Error de conexión.'; upStatus.style.color = 'var(--red)'; }
 }
-
-function onFileLoaded(data) {
-  TOTAL = data.total;
-
-  // Header: solo nombre del archivo y total de números
-  document.getElementById('pill-fp').textContent = `${data.filepath}  (${data.total} núms)`;
+ 
+function onFileLoaded(d) {
+  TOTAL = d.total;
+  document.getElementById('pill-fp').textContent = `${d.filepath}  (${d.total} núms)`;
   document.getElementById('btn-change').style.display = '';
-
-  // Progreso del productor
   document.getElementById('prog-lbl').textContent = `0 / ${TOTAL}`;
   document.getElementById('prog-bar').style.width = '0%';
-
-  // Habilitar inicio
-  const btn = document.getElementById('btn-go');
-  btn.disabled    = false;
-  btn.textContent = '▶ INICIAR';
-
+  const btn = document.getElementById('btn-go'); btn.disabled = false; btn.textContent = '▶ INICIAR';
   document.getElementById('upload-overlay').classList.remove('show');
-
-  const skipMsg = data.skipped > 0 ? ` (${data.skipped} líneas omitidas)` : '';
-  addLog(`Archivo cargado: ${data.filepath} — ${TOTAL} números${skipMsg}`, 'system', now());
+  addLog(`Archivo: ${d.filepath} — ${d.total} números${d.skipped>0?` (${d.skipped} omitidas)`:''}`, 'system', now());
 }
-
-// ─────────────────────────────────────────────────────────────
-//  RENDER DE ACTORES
-// ─────────────────────────────────────────────────────────────
+ 
+// Actor update
 function setActor(key, state) {
-  const a = ACTORS[key];
-  if (!a) return;
-  const imgEl  = document.getElementById(a.img);
-  const lblEl  = document.getElementById(a.lbl);
-  const cardEl = document.getElementById(a.card);
-
-  imgEl.src       = IMG[state] || IMG.idle;
-  imgEl.className = 'state-img s-' + state;
-  if (state === 'consuming' && a.kind) {
-    imgEl.style.filter = `drop-shadow(0 0 8px ${KIND_COLOR[a.kind]})`;
-  } else {
-    imgEl.style.filter = '';
-  }
-
-  lblEl.textContent = LBL[state] || state.toUpperCase();
-  const col = state === 'blocked'  ? 'var(--red)'
-            : state === 'critical' ? 'var(--white)'
-            : a.kind               ? KIND_COLOR[a.kind]
-            : 'var(--pro)';
-  lblEl.style.color = col;
-
-  if (cardEl) {
-    cardEl.className = 'card';
-    if      (state === 'critical')              cardEl.classList.add('g-crit');
-    else if (state === 'blocked')               cardEl.classList.add('g-block');
-    else if (state === 'producing')             cardEl.classList.add('g-pro');
-    else if (state === 'consuming' && a.kind)   cardEl.classList.add('g-' + a.kind);
+  const isConsumer = key !== 'producer';
+  const kind = isConsumer ? key.replace('consumer_','') : null;
+  const el = id => document.getElementById(id);
+  const img = el(`img-${key}`), lbl = el(`slbl-${key}`), card = el(`card-${key}`);
+  if(!img) return;
+  img.src = IMG[state] || IMG.idle;
+  img.className = 'state-img s-' + state;
+  lbl.textContent = LBL[state] || state.toUpperCase();
+  lbl.style.color = state==='blocked'?'var(--red)':state==='critical'?'var(--crit)':kind?COLORS[kind]:'var(--pro)';
+  if(card) {
+    card.className = 'card';
+    if(state==='critical') card.classList.add('g-crit');
+    else if(state==='blocked') card.classList.add('g-block');
+    else if(state==='producing') card.classList.add('g-pro');
+    else if(state==='consuming'&&kind) card.classList.add('g-'+kind);
   }
 }
-
-function applyStates(states) {
-  if (!states) return;
-  Object.entries(states).forEach(([k, v]) => setActor(k, v));
-}
-
-// ─────────────────────────────────────────────────────────────
-//  RENDER DEL BUFFER
-//  Los colores de los slots los asigna classify() en el frontend,
-//  igual que siempre — la clasificación solo existe aquí y en los
-//  consumidores, NUNCA en el productor.
-// ─────────────────────────────────────────────────────────────
-function renderBuffer(contents, criticalActor) {
-  const wrap    = document.getElementById('buf-slots');
-  const cnt     = document.getElementById('buf-cnt');
-  const level   = document.getElementById('buf-level');
-  const pct     = document.getElementById('buf-pct');
-  const fl      = document.getElementById('front-lbl');
-  const fv      = document.getElementById('front-val');
-  const fk      = document.getElementById('front-kind');
-  const bufCard = document.getElementById('card-buffer');
-
-  const n = contents.length;
-  cnt.textContent        = n + ' / ' + BUF_SIZE;
-  const p                = Math.round(n / BUF_SIZE * 100);
-  level.style.width      = p + '%';
-  pct.textContent        = p + '%';
-  level.style.background = p >= 90 ? 'var(--red)' : p >= 60 ? 'var(--odd)' : 'var(--pro)';
-
-  bufCard.className = 'card';
-  if (criticalActor) bufCard.classList.add('g-crit');
-
-  wrap.innerHTML = '';
-  for (let i = 0; i < BUF_SIZE; i++) {
+const applyStates = states => states && Object.entries(states).forEach(([k,v]) => setActor(k,v));
+ 
+// Buffer
+function renderBuffer(contents, crit) {
+  const n = contents.length, p = Math.round(n/BUF_SIZE*100);
+  document.getElementById('buf-cnt').textContent = `${n} / ${BUF_SIZE}`;
+  document.getElementById('buf-pct').textContent = p + '%';
+  const bar = document.getElementById('buf-level');
+  bar.style.width = p + '%';
+  bar.style.background = p>=90?'var(--red)':p>=60?'var(--odd)':'var(--pro)';
+  document.getElementById('card-buffer').className = 'card' + (crit?' g-crit':'');
+  const wrap = document.getElementById('buf-slots'); wrap.innerHTML = '';
+  for(let i=0;i<BUF_SIZE;i++) {
     const s = document.createElement('div');
-    if (i < n) {
-      const k = classify(contents[i]);
-      s.className = 'slot occ-' + k + (i === 0 ? ' front' : '');
-      if (criticalActor && i === 0) s.classList.add('occ-critical');
-      s.textContent = contents[i];
-    } else {
-      s.className = 'slot';
-    }
+    if(i<n) { const k=classify(contents[i]); s.className=`slot occ-${k}${i===0?' front':''}${crit&&i===0?' occ-critical':''}`; s.textContent=contents[i]; }
+    else s.className='slot';
     wrap.appendChild(s);
   }
-
-  if (n > 0) {
-    const k = classify(contents[0]);
-    fl.style.visibility = 'visible';
-    fv.textContent      = contents[0];
-    fv.style.color      = KIND_COLOR[k];
-    fk.textContent      = '(' + {even:'PAR', odd:'IMPAR', prime:'PRIMO'}[k] + ')';
-    fk.style.color      = KIND_COLOR[k];
-  } else {
-    fl.style.visibility = 'hidden';
-  }
+  const fl = document.getElementById('front-lbl');
+  if(n>0) { const k=classify(contents[0]); fl.style.visibility='visible'; document.getElementById('front-val').textContent=contents[0]; document.getElementById('front-val').style.color=COLORS[k]; document.getElementById('front-kind').textContent=`(${k==='even'?'PAR':k==='odd'?'IMPAR':'PRIMO'})`; document.getElementById('front-kind').style.color=COLORS[k]; }
+  else fl.style.visibility='hidden';
 }
-
-// ─────────────────────────────────────────────────────────────
-//  FLASH DE NÚMERO
-// ─────────────────────────────────────────────────────────────
-function flashNum(elId, value, color) {
-  const el = document.getElementById(elId);
-  el.textContent = value;
-  if (color) el.style.color = color;
-  el.classList.remove('pop');
-  void el.offsetWidth;
-  el.classList.add('pop');
-}
-
-// ─────────────────────────────────────────────────────────────
-//  LOG
-// ─────────────────────────────────────────────────────────────
-function now() { return new Date().toLocaleTimeString(); }
-
-function addLog(msg, kind, ts) {
-  const body = document.getElementById('log-body');
-  const row  = document.createElement('div');
-  row.className = 'log-row';
-  row.innerHTML = `<span class="log-ts">${ts}</span><span class="c-${kind}">${msg}</span>`;
-  body.insertBefore(row, body.firstChild);
-  if (body.children.length > 200) body.removeChild(body.lastChild);
-}
-
-// ─────────────────────────────────────────────────────────────
-//  SOCKET.IO
-// ─────────────────────────────────────────────────────────────
+ 
+// Helpers
+const flashNum = (id,v,c) => { const el=document.getElementById(id); el.textContent=v; if(c)el.style.color=c; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); };
+const now = () => new Date().toLocaleTimeString();
+function addLog(msg,kind,ts) { const b=document.getElementById('log-body'),r=document.createElement('div'); r.className='log-row'; r.innerHTML=`<span class="log-ts">${ts}</span><span class="c-${kind}">${msg}</span>`; b.insertBefore(r,b.firstChild); if(b.children.length>200)b.removeChild(b.lastChild); }
+function resetConsumers() { KINDS.forEach(k => { document.getElementById('sum-'+k).textContent='0'; document.getElementById('cnt-'+k).textContent='0 números'; document.getElementById('snum-consumer-'+k).textContent='—'; setActor('consumer_'+k,'idle'); }); }
+ 
+// SocketIO
 const socket = io();
-
-socket.on('connect', () => addLog('Conectado al servidor', 'system', now()));
-
-socket.on('ready', data => {
-  renderBuffer(data.buffer || [], null);
-  if (data.file_loaded && data.total > 0) {
-    TOTAL = data.total;
-    document.getElementById('prog-lbl').textContent = `0 / ${TOTAL}`;
-    document.getElementById('btn-go').disabled = false;
-    document.getElementById('upload-overlay').classList.remove('show');
-  }
-});
-
-socket.on('simulation_start', data => {
-  prodIdx = 0;
-  renderBuffer([], null);
-  applyStates(data.states);
-  document.getElementById('btn-go').disabled    = true;
-  document.getElementById('btn-go').textContent = '⟳ EJECUTANDO';
-  // El productor solo muestra el número crudo — sin etiqueta de tipo
-  document.getElementById('snum-producer').textContent = '—';
-  document.getElementById('snum-producer').style.color = 'var(--pro)';
-  ['even','odd','prime'].forEach(k => {
-    document.getElementById('sum-'+k).textContent  = '0';
-    document.getElementById('cnt-'+k).textContent  = '0 números';
-    document.getElementById('snum-consumer-'+k).textContent = '—';
-  });
-});
-
-socket.on('insert', data => {
-  prodIdx++;
-  document.getElementById('prog-bar').style.width = (prodIdx / TOTAL * 100) + '%';
-  document.getElementById('prog-lbl').textContent = `${prodIdx} / ${TOTAL}`;
-
-  // El productor muestra el número en color neutro (verde del productor),
-  // sin revelar su clasificación — eso lo descubren los consumidores.
-  flashNum('snum-producer', data.num, 'var(--pro)');
-
-  renderBuffer(data.buffer, data.critical);
-  applyStates(data.states);
-});
-
-socket.on('take', data => {
-  const col = KIND_COLOR[data.consumer];
-  flashNum('snum-consumer-' + data.consumer, data.num, col);
-  document.getElementById('sum-' + data.consumer).textContent = data.sum;
-  document.getElementById('cnt-' + data.consumer).textContent =
-    data.count + ' número' + (data.count !== 1 ? 's' : '');
-  renderBuffer(data.buffer, data.critical);
-  applyStates(data.states);
-});
-
-socket.on('critical_enter', data => {
-  renderBuffer(data.buffer, data.critical);
-  applyStates(data.states);
-});
-
-socket.on('state_update', data => {
-  renderBuffer(data.buffer || [], data.critical);
-  applyStates(data.states);
-  if (data.sums)   ['even','odd','prime'].forEach(k =>
-    document.getElementById('sum-'+k).textContent = data.sums[k]);
-  if (data.counts) ['even','odd','prime'].forEach(k =>
-    document.getElementById('cnt-'+k).textContent =
-      data.counts[k] + ' número' + (data.counts[k] !== 1 ? 's' : ''));
-});
-
-socket.on('log', data => addLog(data.msg, data.kind, data.ts));
-
-socket.on('simulation_end', data => {
-  document.getElementById('btn-go').textContent = '✓ COMPLETADO';
-  // Resumen final — aquí sí se revelan los totales por tipo
-  ['even','odd','prime'].forEach(k => {
-    document.getElementById('f-sum-'+k).textContent = data.sums[k];
-    document.getElementById('f-cnt-'+k).textContent = data.counts[k] + ' núms';
-  });
-  setTimeout(() => document.getElementById('final-overlay').classList.add('show'), 1400);
-});
-
-socket.on('error', data => addLog('⚠ ' + data.msg, 'system', now()));
-
-// ─────────────────────────────────────────────────────────────
-//  ACCIONES DE USUARIO
-// ─────────────────────────────────────────────────────────────
+socket.on('connect', () => addLog('Conectado al servidor','system',now()));
+socket.on('ready', d => { renderBuffer(d.buffer||[],null); if(d.file_loaded&&d.total>0){TOTAL=d.total;document.getElementById('prog-lbl').textContent=`0 / ${TOTAL}`;document.getElementById('btn-go').disabled=false;document.getElementById('upload-overlay').classList.remove('show');} });
+socket.on('simulation_start', d => { prodIdx=0;renderBuffer([],null);applyStates(d.states);document.getElementById('btn-go').disabled=true;document.getElementById('btn-go').textContent='⟳ EJECUTANDO';document.getElementById('snum-producer').textContent='—';resetConsumers(); });
+socket.on('insert', d => { prodIdx++;document.getElementById('prog-bar').style.width=(prodIdx/TOTAL*100)+'%';document.getElementById('prog-lbl').textContent=`${prodIdx} / ${TOTAL}`;flashNum('snum-producer',d.num,'var(--pro)');renderBuffer(d.buffer,d.critical);applyStates(d.states); });
+socket.on('take', d => { flashNum('snum-consumer-'+d.consumer,d.num,COLORS[d.consumer]);document.getElementById('sum-'+d.consumer).textContent=d.sum;document.getElementById('cnt-'+d.consumer).textContent=d.count+' número'+(d.count!==1?'s':'');renderBuffer(d.buffer,d.critical);applyStates(d.states); });
+socket.on('critical_enter', d => { renderBuffer(d.buffer,d.critical);applyStates(d.states); });
+socket.on('state_update', d => { renderBuffer(d.buffer||[],d.critical);applyStates(d.states);if(d.sums)KINDS.forEach(k=>document.getElementById('sum-'+k).textContent=d.sums[k]);if(d.counts)KINDS.forEach(k=>document.getElementById('cnt-'+k).textContent=d.counts[k]+' número'+(d.counts[k]!==1?'s':'')); });
+socket.on('log', d => addLog(d.msg,d.kind,d.ts));
+socket.on('simulation_end', d => { document.getElementById('btn-go').textContent='✓ COMPLETADO';KINDS.forEach(k=>{document.getElementById('f-sum-'+k).textContent=d.sums[k];document.getElementById('f-cnt-'+k).textContent=d.counts[k]+' núms';}); setTimeout(()=>document.getElementById('final-overlay').classList.add('show'),1400); });
+socket.on('error', d => addLog('⚠ '+d.msg,'system',now()));
+ 
 function startSim() { socket.emit('start'); }
-
-function restartSameFile() {
-  document.getElementById('final-overlay').classList.remove('show');
-  const btn = document.getElementById('btn-go');
-  btn.disabled    = false;
-  btn.textContent = '▶ INICIAR';
-  prodIdx = 0;
-  document.getElementById('prog-bar').style.width   = '0%';
-  document.getElementById('prog-lbl').textContent   = `0 / ${TOTAL}`;
-  document.getElementById('snum-producer').textContent = '—';
-  document.getElementById('log-body').innerHTML = '';
-  ['even','odd','prime'].forEach(k => {
-    document.getElementById('sum-'+k).textContent = '0';
-    document.getElementById('cnt-'+k).textContent = '0 números';
-    document.getElementById('snum-consumer-'+k).textContent = '—';
-    setActor('consumer_'+k, 'idle');
-  });
-  setActor('producer', 'idle');
-  renderBuffer([], null);
-}
-
-function changeFile() {
-  document.getElementById('final-overlay').classList.remove('show');
-  document.getElementById('upload-overlay').classList.add('show');
-  upStatus.textContent = '';
-  fileInput.value      = '';
-  const btn = document.getElementById('btn-go');
-  btn.disabled    = true;
-  btn.textContent = '▶ INICIAR';
-  prodIdx = 0; TOTAL = 0;
-  document.getElementById('prog-bar').style.width   = '0%';
-  document.getElementById('prog-lbl').textContent   = '— / —';
-  document.getElementById('snum-producer').textContent = '—';
-  document.getElementById('log-body').innerHTML = '';
-  ['even','odd','prime'].forEach(k => {
-    document.getElementById('sum-'+k).textContent = '0';
-    document.getElementById('cnt-'+k).textContent = '0 números';
-    document.getElementById('snum-consumer-'+k).textContent = '—';
-    setActor('consumer_'+k, 'idle');
-  });
-  setActor('producer', 'idle');
-  renderBuffer([], null);
-}
-
-// Init
+function restartSameFile() { document.getElementById('final-overlay').classList.remove('show');const btn=document.getElementById('btn-go');btn.disabled=false;btn.textContent='▶ INICIAR';prodIdx=0;document.getElementById('prog-bar').style.width='0%';document.getElementById('prog-lbl').textContent=`0 / ${TOTAL}`;document.getElementById('snum-producer').textContent='—';document.getElementById('log-body').innerHTML='';resetConsumers();setActor('producer','idle');renderBuffer([],null); }
+function changeFile() { document.getElementById('final-overlay').classList.remove('show');document.getElementById('upload-overlay').classList.add('show');upStatus.textContent='';fileInput.value='';const btn=document.getElementById('btn-go');btn.disabled=true;btn.textContent='▶ INICIAR';prodIdx=0;TOTAL=0;document.getElementById('prog-bar').style.width='0%';document.getElementById('prog-lbl').textContent='— / —';document.getElementById('snum-producer').textContent='—';document.getElementById('log-body').innerHTML='';resetConsumers();setActor('producer','idle');renderBuffer([],null); }
+ 
 renderBuffer([], null);
 </script>
 </body>
