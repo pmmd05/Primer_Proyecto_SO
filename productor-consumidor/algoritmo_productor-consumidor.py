@@ -182,21 +182,21 @@ def producer() -> None:
                 log(f"PRODUCTOR bloqueado — buffer lleno ({len(_buffer)}/{BUFFER_SIZE})", 'blocked')
                 emit_event('state_update')
                 while len(_buffer) >= BUFFER_SIZE:
-                    condition.wait()                    # libera lock, espera notify
+                    condition.wait() # libera lock, espera notify
 
-            # ── SECCIÓN CRÍTICA: insertar en buffer ───────────
+            # SECCIÓN CRÍTICA: insertar en buffer
             set_state('producer', 'critical')
             set_critical('producer')
             emit_event('critical_enter', {'actor': 'producer', 'num': num, 'kind': kind})
 
-            time.sleep(CRITICAL_HOLD)                   # pausa visual en SC
-            _buffer.append(num)                         # insertar al final (FIFO)
+            time.sleep(CRITICAL_HOLD) # pausa visual en SC
+            _buffer.append(num) # insertar al final (FIFO)
             buf_size = len(_buffer)
             buf_snap = list(_buffer)
 
             set_critical(None)
             condition.notify_all()                      # despertar consumidores
-        # ── LIBERA LOCK ──────────────────────────────────────
+        # LIBERA LOCK
 
         set_state('producer', 'producing')
         log(f"PRODUCTOR insertó {num} ({label}) → buffer [{buf_size}/{BUFFER_SIZE}]", 'producer')
@@ -240,7 +240,7 @@ def consumer(kind: str) -> None:
     emit_event('state_update')
 
     while True:
-        with condition:                                 # ── ADQUIERE LOCK ──
+        with condition:                                 # ADQUIERE LOCK
 
             while True:
                 # ¿El frente del buffer es mi tipo? → puedo tomar
@@ -264,7 +264,7 @@ def consumer(kind: str) -> None:
                     emit_event('state_update')
                 condition.wait()                        # libera lock, espera notify
 
-            # ── SECCIÓN CRÍTICA: extraer del frente (FIFO) ───
+            # SECCIÓN CRÍTICA: extraer del frente (FIFO)
             set_state(actor_key, 'critical')
             set_critical(actor_key)
             emit_event('critical_enter', {'actor': actor_key, 'kind': kind})
@@ -276,7 +276,7 @@ def consumer(kind: str) -> None:
 
             set_critical(None)
             condition.notify_all()                      # despertar productor
-        # ── LIBERA LOCK ──────────────────────────────────────
+        # LIBERA LOCK 
 
         # Procesar número FUERA de la sección crítica
         set_state(actor_key, 'consuming')
@@ -299,10 +299,7 @@ def consumer(kind: str) -> None:
 
         set_state(actor_key, 'waiting')
 
-
-# ──────────────────────────────────────────────────────────────
-#  RUNNER DE SIMULACIÓN
-# ──────────────────────────────────────────────────────────────
+# SIMULACIÓN
 def run_simulation() -> None:
     """Lanza el productor y los 3 consumidores, espera a que todos terminen."""
     global _sim_running
