@@ -289,8 +289,9 @@ function onFileLoaded(d) {
 function setActor(key, state) {
   const isConsumer = key !== 'producer';
   const kind = isConsumer ? key.replace('consumer_','') : null;
+  const htmlKey = key.replace('_','-');
   const el = id => document.getElementById(id);
-  const img = el(`img-${key}`), lbl = el(`slbl-${key}`), card = el(`card-${key}`);
+  const img = el(`img-${htmlKey}`), lbl = el(`slbl-${htmlKey}`), card = el(`card-${htmlKey}`);
   if(!img) return;
   img.src = IMG[state] || IMG.idle;
   img.className = 'state-img s-' + state;
