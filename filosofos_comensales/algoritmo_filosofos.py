@@ -22,22 +22,20 @@ import webbrowser
 from flask import Flask, render_template, send_from_directory
 from flask_socketio import SocketIO
 
-# ──────────────────────────────────────────────────────────────
-#  CONFIGURACIÓN
-# ──────────────────────────────────────────────────────────────
-DEFAULT_N      = 5
-DEFAULT_CYCLES = 10
-THINK_MIN      = 0.8
-THINK_MAX      = 2.0
-EAT_MIN        = 0.8
-EAT_MAX        = 1.8
-ACQUIRE_PAUSE  = 0.25   # pausa visual al intentar adquirir tenedor
+# CONFIGURACIÓN
+filosofos_predeterminados = 5
+comidas_predeterminadas = 10
+min_pensar = 0.8
+max_pensar = 2.0
+min_comer = 0.8
+max_comer = 1.8
+pausa_visual = 0.25   # pausa visual al intentar adquirir tenedor
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_DIR = os.path.join(SCRIPT_DIR, 'templates', 'imagenes')
 
-NAMES = ["Platón", "Aristóteles", "Sócrates", "Confucio",
-         "Descartes", "Kant", "Nietzsche", "Hume", "Locke", "Spinoza"]
+nombres = ["Platón", "Aristóteles", "Sócrates", "Confucio",
+         "Descartes", "Kant", "Nietzsche", "Hume", "Locke", "Tales de Mileto"]
 
 # ──────────────────────────────────────────────────────────────
 #  FLASK + SOCKETIO
@@ -55,72 +53,74 @@ socketio = SocketIO(
     engineio_logger=False,
 )
 
-# ──────────────────────────────────────────────────────────────
-#  ESTADO COMPARTIDO
-# ──────────────────────────────────────────────────────────────
-_n_philosophers: int  = DEFAULT_N
-_cycles:         int  = DEFAULT_CYCLES
-_sim_running:    bool = False
-_sim_lock             = threading.Lock()
+# ESTADO COMPARTIDO
+_n_filosofos: int = filosofos_predeterminados
+_comidas: int = comidas_predeterminadas
+_sim_running: bool = False
+_sim_lock = threading.Lock()
 
-# Estado de cada filósofo: 'idle' | 'thinking' | 'waiting' | 'eating' | 'done'
-_phil_states: list = []
-_eat_counts:  list = []
-_state_lock        = threading.Lock()
+# Estado de cada filósofo
+_estado_filosofos: list = []
+_conteo_comidas: list = []
+_state_lock = threading.Lock()
 
 # Estado de cada tenedor
-_fork_held: list = []   # bool — True si está tomado
-_fork_by:   list = []   # índice del filósofo que lo tiene, -1 si libre
-_fork_lock       = threading.Lock()
+_tenedor_sostenido: list = []   # bool — True si está tomado
+_sostenido_por: list = []   # índice del filósofo que lo tiene, -1 si libre
+_fork_lock = threading.Lock()
 
-# Mutex de cada tenedor (primitiva de sincronización real)
-_forks: list = []   # lista de threading.Lock()
+# Mutex de cada tenedor
+_forks: list = [] 
 
-# ──────────────────────────────────────────────────────────────
-#  GESTIÓN DE ESTADO
-# ──────────────────────────────────────────────────────────────
-def reset(n: int, cycles: int) -> None:
+# GESTIÓN DE ESTADO
+def reset(num_filosofos: int, num_comidas: int) -> None:
     """Reinicia todas las estructuras para una nueva simulación."""
-    global _phil_states, _eat_counts, _fork_held, _fork_by, _forks
-    global _n_philosophers, _cycles
+    global _estado_filosofos, _conteo_comidas, _tenedor_sostenido, _sostenido_por, _forks
+    global _n_filosofos, _comidas
 
-    _n_philosophers = n
-    _cycles         = cycles
-    _phil_states    = ['idle'] * n
-    _eat_counts     = [0] * n
-    _fork_held      = [False] * n
-    _fork_by        = [-1] * n
-    _forks          = [threading.Lock() for _ in range(n)]
+    _n_filosofos = num_filosofos
+    _comidas = num_comidas
+    _estado_filosofos = ['idle'] * num_filosofos
+    _conteo_comidas = [0] * num_filosofos
+    _tenedor_sostenido = [False] * num_filosofos
+    _sostenido_por = [-1] * num_filosofos
+    _forks = [threading.Lock() for _ in range(num_filosofos)]
 
 
 def snapshot() -> dict:
     """Captura atómica del estado completo para enviar al cliente."""
     with _state_lock:
-        states = list(_phil_states)
-        counts = list(_eat_counts)
+        estados = list(_estado_filosofos)
+        conteo = list(_conteo_comidas)
     with _fork_lock:
-        fheld = list(_fork_held)
-        fby   = list(_fork_by)
+        tenedor_sostenido = list(_tenedor_sostenido)
+        sostenido_por   = list(_sostenido_por)
     return {
-        'states':    states,
-        'counts':    counts,
-        'fork_held': fheld,
-        'fork_by':   fby,
-        'n':         _n_philosophers,
-        'cycles':    _cycles,
-        'names':     NAMES[:_n_philosophers],
+        'states': estados,
+        'estados': estados,
+        'counts': conteo,
+        'conteo': conteo,
+        'fork_held': tenedor_sostenido,
+        'tenedor_sostenido': tenedor_sostenido,
+        'fork_by': sostenido_por,
+        'sostenido_por': sostenido_por,
+        'n': _n_filosofos,
+        'cycles': _comidas,
+        'comidas': _comidas,
+        'names': nombres[:_n_filosofos],
+        'nombres': nombres[:_n_filosofos],
     }
 
 
 def set_phil_state(i: int, state: str) -> None:
     with _state_lock:
-        _phil_states[i] = state
+        _estado_filosofos[i] = state
 
 
-def set_fork(fork_idx: int, held: bool, by: int = -1) -> None:
+def set_fork(fork_idx: int, sostenido: bool, por: int = -1) -> None:
     with _fork_lock:
-        _fork_held[fork_idx] = held
-        _fork_by[fork_idx]   = by
+        _tenedor_sostenido[fork_idx] = sostenido
+        _sostenido_por[fork_idx]   = por
 
 
 def emit_ev(event: str, extra: dict = None) -> None:
@@ -137,9 +137,7 @@ def log(msg: str, kind: str = 'system') -> None:
     socketio.emit('log', {'msg': msg, 'kind': kind, 'ts': ts})
 
 
-# ──────────────────────────────────────────────────────────────
-#  FILÓSOFO (hilo)
-# ──────────────────────────────────────────────────────────────
+# FILÓSOFO (hilo)
 def philosopher(idx: int, n: int, cycles: int) -> None:
     """
     Lógica de un filósofo modelado como hilo.
@@ -150,7 +148,7 @@ def philosopher(idx: int, n: int, cycles: int) -> None:
       Esto rompe la espera circular: nunca todos los filósofos pueden
       quedar bloqueados esperando su segundo tenedor simultáneamente.
     """
-    name  = NAMES[idx % len(NAMES)]
+    name  = nombres[idx % len(nombres)]
     left  = idx
     right = (idx + 1) % n
 
@@ -166,37 +164,37 @@ def philosopher(idx: int, n: int, cycles: int) -> None:
 
     for cycle in range(1, cycles + 1):
 
-        # ── PENSANDO ──────────────────────────────────────────
+        # PENSANDO 
         set_phil_state(idx, 'thinking')
         log(f"{name} pensando... (ciclo {cycle}/{cycles})", str(idx))
         emit_ev('state_update')
-        time.sleep(random.uniform(THINK_MIN, THINK_MAX))
+        time.sleep(random.uniform(min_pensar, max_pensar))
 
-        # ── ESPERANDO primer tenedor ───────────────────────────
+        # ESPERANDO primer tenedor
         set_phil_state(idx, 'waiting')
         log(f"{name} intenta tomar tenedor {first_fork}", str(idx))
         emit_ev('fork_attempt', {'philosopher': idx, 'fork': first_fork})
 
-        _forks[first_fork].acquire()           # bloquea si el tenedor está ocupado
+        _forks[first_fork].acquire() # bloquea si el tenedor está ocupado
 
         set_fork(first_fork, True, idx)
         log(f"{name} tomó tenedor {first_fork}", str(idx))
         emit_ev('fork_taken', {'philosopher': idx, 'fork': first_fork})
-        time.sleep(ACQUIRE_PAUSE)
+        time.sleep(pausa_visual)  # pausa visual para mostrar que tiene un tenedor antes de intentar el segundo
 
-        # ── ESPERANDO segundo tenedor ──────────────────────────
+        # ESPERANDO segundo tenedor
         log(f"{name} intenta tomar tenedor {second_fork}", str(idx))
         emit_ev('fork_attempt', {'philosopher': idx, 'fork': second_fork})
 
-        _forks[second_fork].acquire()          # bloquea si el tenedor está ocupado
+        _forks[second_fork].acquire() # bloquea si el tenedor está ocupado
 
         set_fork(second_fork, True, idx)
         log(f"{name} tomó tenedor {second_fork}", str(idx))
         emit_ev('fork_taken', {'philosopher': idx, 'fork': second_fork})
 
-        # ── COMIENDO (sección crítica) ─────────────────────────
+        # COMIENDO (sección crítica)
         set_phil_state(idx, 'eating')
-        eat_t = random.uniform(EAT_MIN, EAT_MAX)
+        eat_t = random.uniform(min_comer, max_comer)
         log(f"{name} COMIENDO con tenedores {first_fork} y {second_fork} ({eat_t:.2f}s)", str(idx))
         emit_ev('eating_start', {
             'philosopher': idx,
@@ -206,34 +204,33 @@ def philosopher(idx: int, n: int, cycles: int) -> None:
         time.sleep(eat_t)
 
         with _state_lock:
-            _eat_counts[idx] += 1
-            count = _eat_counts[idx]
+            _conteo_comidas[idx] += 1
+            conteo = _conteo_comidas[idx]
 
-        # ── LIBERAR TENEDORES ─────────────────────────────────
+        # LIBERAR TENEDORES 
         _forks[first_fork].release()
         set_fork(first_fork, False, -1)
 
         _forks[second_fork].release()
         set_fork(second_fork, False, -1)
 
-        log(f"{name} soltó tenedores {first_fork} y {second_fork} (comidas: {count})", str(idx))
+        log(f"{name} soltó tenedores {first_fork} y {second_fork} (comidas: {conteo})", str(idx))
         emit_ev('eating_end', {
             'philosopher': idx,
             'forks':       [first_fork, second_fork],
-            'count':       count,
+            'conteo':       conteo,
         })
 
-    # ── TERMINADO ─────────────────────────────────────────────
+    # TERMINADO 
     set_phil_state(idx, 'done')
     with _state_lock:
-        final = _eat_counts[idx]
+        final = _conteo_comidas[idx]
     log(f"{name} terminó — comió {final} veces", str(idx))
     emit_ev('state_update')
 
 
-# ──────────────────────────────────────────────────────────────
-#  RUNNER DE SIMULACIÓN
-# ──────────────────────────────────────────────────────────────
+
+# RUNNER DE SIMULACIÓN
 def run_simulation(n: int, cycles: int) -> None:
     """Lanza todos los hilos de filósofos y espera a que terminen."""
     global _sim_running
@@ -246,7 +243,7 @@ def run_simulation(n: int, cycles: int) -> None:
         threading.Thread(
             target=philosopher,
             args=(i, n, cycles),
-            name=NAMES[i % len(NAMES)],
+            name=nombres[i % len(nombres)],
             daemon=True,
         )
         for i in range(n)
@@ -260,26 +257,24 @@ def run_simulation(n: int, cycles: int) -> None:
         _sim_running = False
 
     with _state_lock:
-        final_counts = list(_eat_counts)
+        final_counts = list(_conteo_comidas)
 
     log("════ SIMULACIÓN COMPLETADA ════", 'system')
     socketio.emit('simulation_end', {
         'counts': final_counts,
-        'names':  NAMES[:n],
+        'names':  nombres[:n],
         'cycles': cycles,
     })
 
 
-# ──────────────────────────────────────────────────────────────
 #  FLASK — RUTAS
-# ──────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
     return render_template(
         'index.html',
-        default_n      = DEFAULT_N,
-        default_cycles = DEFAULT_CYCLES,
-        names_js       = NAMES,
+        default_n      = filosofos_predeterminados,
+        default_cycles = comidas_predeterminadas,
+        names_js       = nombres,
     )
 
 
@@ -287,15 +282,13 @@ def index():
 def serve_image(filename):
     return send_from_directory(IMAGE_DIR, filename)
 
-
+# Icono de la pestaña del navegador
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(IMAGE_DIR, 'pensando.png', mimetype='image/png')
 
 
-# ──────────────────────────────────────────────────────────────
 #  SOCKETIO — EVENTOS
-# ──────────────────────────────────────────────────────────────
 @socketio.on('connect')
 def on_connect():
     socketio.emit('ready', snapshot())
@@ -308,11 +301,11 @@ def on_start(data):
         if _sim_running:
             return
         _sim_running = True
-    n      = max(2, min(10, int(data.get('n',      DEFAULT_N))))
-    cycles = max(1, min(50, int(data.get('cycles', DEFAULT_CYCLES))))
+    num_filosofos = max(2, min(10, int(data.get('n',      filosofos_predeterminados))))
+    num_comidas = max(1, min(50, int(data.get('cycles', comidas_predeterminadas))))
     threading.Thread(
         target=run_simulation,
-        args=(n, cycles),
+        args=(num_filosofos, num_comidas),
         daemon=True,
     ).start()
 
@@ -321,15 +314,15 @@ def on_start(data):
 #  MAIN
 # ──────────────────────────────────────────────────────────────
 def main():
-    n      = int(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_N
-    cycles = int(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_CYCLES
+    num_filosofos = int(sys.argv[1]) if len(sys.argv) > 1 else filosofos_predeterminados
+    num_comidas = int(sys.argv[2]) if len(sys.argv) > 2 else comidas_predeterminadas
 
     print(f"\n{'─'*54}")
     print(f"  Filósofos Comensales — SO — URL")
     print(f"{'─'*54}")
-    print(f"  Filósofos  : {n}")
-    print(f"  Ciclos     : {cycles}")
-    print(f"  Tenedores  : {n}  (uno entre cada par)")
+    print(f"  Filósofos  : {num_filosofos}")
+    print(f"  Ciclos     : {num_comidas}")
+    print(f"  Tenedores  : {num_filosofos}  (uno entre cada par)")
     print(f"  Deadlock   : ordenamiento asimétrico")
     print(f"  Servidor   : http://localhost:5000")
     print(f"  (El navegador se abrirá automáticamente)\n")

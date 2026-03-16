@@ -22,9 +22,7 @@ import webbrowser
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from flask_socketio import SocketIO
 
-# ──────────────────────────────────────────────────────────────
-#  CONFIGURACIÓN
-# ──────────────────────────────────────────────────────────────
+# CONFIGURACIÓN 
 BUFFER_SIZE    = 10    # Capacidad máxima del buffer compartido
 PRODUCER_DELAY = 0.50  # Pausa entre producciones
 CONSUMER_DELAY = 0.70  # Pausa al procesar un número consumido
@@ -33,9 +31,8 @@ CRITICAL_HOLD  = 0.35  # Pausa visible dentro de la sección crítica
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_DIR = os.path.join(SCRIPT_DIR, 'templates', 'imagenes')
 
-# ──────────────────────────────────────────────────────────────
-#  FLASK + SOCKETIO
-# ──────────────────────────────────────────────────────────────
+
+# FLASK + SOCKETIO
 app = Flask(
     __name__,
     template_folder=os.path.join(SCRIPT_DIR, 'templates'),
@@ -49,9 +46,7 @@ socketio = SocketIO(
     engineio_logger=False,
 )
 
-# ──────────────────────────────────────────────────────────────
-#  HELPERS DE CLASIFICACIÓN
-# ──────────────────────────────────────────────────────────────
+#  FUNCIONES AUXILIARES PARA CLASIFICACIÓN
 def is_prime(n: int) -> bool:
     """Retorna True si n es primo."""
     if n < 2:      return False
@@ -72,39 +67,34 @@ def classify(n: int) -> str:
     return 'odd'
 
 
-# ──────────────────────────────────────────────────────────────
-#  ESTADO COMPARTIDO DE LA SIMULACIÓN
-# ──────────────────────────────────────────────────────────────
-_numbers:  list = []    # Números cargados desde el archivo
-_filepath: str  = ''    # Nombre del archivo cargado
+# ESTADO COMPARTIDO DE LA SIMULACIÓN
+_numbers: list = [] # Números cargados desde el archivo
+_filepath: str = '' # Nombre del archivo cargado
 
 # Buffer compartido y variable de condición (lock + señalización)
-_buffer:     list = []
-condition         = threading.Condition()
-_prod_done: bool  = False
+_buffer: list = []
+condition = threading.Condition()
+_prod_done: bool = False
 
-# Estado de cada actor para la UI
-# Posibles estados: 'idle' | 'waiting' | 'producing' | 'consuming'
-#                   'blocked' | 'critical' | 'done'
-_states:      dict = {}
-_states_lock       = threading.Lock()
+# Estado de cada actor para la UI 
+_states: dict = {}
+_states_lock = threading.Lock()
 
 # Actor actualmente en sección crítica (None = nadie)
 _critical_actor: str = None
-_critical_lock        = threading.Lock()
+_critical_lock = threading.Lock()
 
 # Estadísticas de consumidores
-_sums:       dict = {'even': 0, 'odd': 0, 'prime': 0}
-_counts:     dict = {'even': 0, 'odd': 0, 'prime': 0}
-_stats_lock       = threading.Lock()
+_sums: dict = {'even': 0, 'odd': 0, 'prime': 0}
+_counts: dict = {'even': 0, 'odd': 0, 'prime': 0}
+_stats_lock = threading.Lock()
 
 # Control de ejecución
 _sim_running: bool = False
-_sim_lock          = threading.Lock()
+_sim_lock = threading.Lock()
 
-# ──────────────────────────────────────────────────────────────
-#  GESTIÓN DE ESTADO
-# ──────────────────────────────────────────────────────────────
+
+# GESTIÓN DE ESTADO
 def reset() -> None:
     """Reinicia el estado de la simulación para permitir una nueva ejecución."""
     global _buffer, _prod_done, _states, _critical_actor, _sums, _counts
@@ -113,9 +103,9 @@ def reset() -> None:
     _prod_done      = False
     _critical_actor = None
     _states = {
-        'producer':       'idle',
-        'consumer_even':  'idle',
-        'consumer_odd':   'idle',
+        'producer': 'idle',
+        'consumer_even': 'idle',
+        'consumer_odd': 'idle',
         'consumer_prime': 'idle',
     }
     _sums   = {'even': 0, 'odd': 0, 'prime': 0}
@@ -164,9 +154,7 @@ def log(msg: str, kind: str = 'system') -> None:
     socketio.emit('log', {'msg': msg, 'kind': kind, 'ts': ts})
 
 
-# ──────────────────────────────────────────────────────────────
 #  PRODUCTOR
-# ──────────────────────────────────────────────────────────────
 def producer() -> None:
     """
     Lee los números del archivo ya cargado y los inserta al FINAL del buffer (FIFO).
@@ -186,9 +174,9 @@ def producer() -> None:
         label = {'even': 'PAR', 'odd': 'IMPAR', 'prime': 'PRIMO'}[kind]
         time.sleep(PRODUCER_DELAY)
 
-        with condition:                                 # ── ADQUIERE LOCK ──
+        with condition: # ADQUIERE LOCK
 
-            # Esperar si el buffer está lleno → productor bloqueado
+            # Esperar si el buffer está lleno, productor bloqueado
             if len(_buffer) >= BUFFER_SIZE:
                 set_state('producer', 'blocked')
                 log(f"PRODUCTOR bloqueado — buffer lleno ({len(_buffer)}/{BUFFER_SIZE})", 'blocked')
@@ -271,17 +259,8 @@ def consumer(kind: str) -> None:
                     return
 
                 # Seguir esperando
-                if not _buffer:
-                    new_state = 'blocked'
-                    reason    = "buffer vacío"
-                else:
-                    front_kind = classify(_buffer[0])
-                    new_state  = 'waiting'
-                    reason     = f"frente es {front_kind.upper()}, espera {kind.upper()}"
-
-                if _states.get(actor_key) != new_state:
-                    set_state(actor_key, new_state)
-                    log(f"{name} BLOQUEADO — {reason}", 'blocked')
+                if _states.get(actor_key) != 'waiting':
+                    set_state(actor_key, 'waiting')
                     emit_event('state_update')
                 condition.wait()                        # libera lock, espera notify
 
