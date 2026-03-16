@@ -179,27 +179,32 @@ header {
 .phil-card.eating-anim { animation: eatPulse 1s ease infinite; }
 
 /* ── FORK ─────────────────────────────────────────────────── */
-.fork-el {
+/*
+ * Cada filósofo tiene DOS elementos .fork-side pegados a sus lados:
+ *   - uno a la derecha (tenedor i,   compartido con el siguiente filósofo)
+ *   - uno a la izquierda (tenedor i-1, compartido con el anterior filósofo)
+ * Ambos comparten data-fork-id para actualización conjunta.
+ */
+.fork-side {
   position: absolute;
-  width: 28px; height: 28px;
+  width: 26px; height: 26px;
   transform-origin: center center;
   display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
+  font-size: 17px;
   transition: filter .25s, transform .25s;
   pointer-events: none;
   user-select: none;
 }
-.fork-el.free  { filter: brightness(.45); }
-.fork-el.held  {
-  filter: brightness(1.3) drop-shadow(0 0 8px var(--gold2));
-  transform: rotate(30deg) scale(1.15);
+.fork-side.free { filter: brightness(.40); }
+.fork-side.held {
+  filter: brightness(1.5) drop-shadow(0 0 9px var(--gold2));
 }
+
 @keyframes forkGrab {
   0%   { transform: rotate(0deg) scale(1); }
   40%  { transform: rotate(20deg) scale(1.2); }
   100% { transform: rotate(30deg) scale(1.15); }
 }
-.fork-el.held { animation: forkGrab .3s ease forwards; }
 
 /* ── STATS BAR ──────────────────────────────────────────────── */
 .stats-bar {
@@ -387,7 +392,7 @@ function buildScene(n, names) {
   const R  = sceneRadius(n);
 
   // Limpiar filósofos y tenedores anteriores
-  document.querySelectorAll('.phil-seat, .fork-el').forEach(el => el.remove());
+  document.querySelectorAll('.phil-seat, .fork-side').forEach(el => el.remove());
 
   // Tamaño de la mesa
   const tableSize = Math.max(160, sceneSize * 0.28);
@@ -416,25 +421,56 @@ function buildScene(n, names) {
     scene.appendChild(seat);
   }
 
-  // Construir tenedores (entre cada par de filósofos)
+  // ── TENEDORES ────────────────────────────────────────────────
+  // Hay exactamente N tenedores compartidos.
+  // Tenedor i está entre el filósofo i y el filósofo (i+1)%n.
+  //
+  // Posición: punto medio entre las dos tarjetas (coordenadas cartesianas,
+  // sin aritmética de ángulos circulares → sin bug de wrap-around con N impar).
+  // Rotación: atan2 del vector i→(i+1) para orientar el emoji hacia el vecino.
+
+  const dAngle  = (2 * Math.PI) / n;
+  const philPos = Array.from({ length: n }, (_, i) => ({
+    x: cx + R * Math.cos(dAngle * i - Math.PI / 2),
+    y: cy + R * Math.sin(dAngle * i - Math.PI / 2),
+  }));
+
   for (let i = 0; i < n; i++) {
-    const angle1    = (2 * Math.PI * i / n) - Math.PI / 2;
-    const angle2    = (2 * Math.PI * ((i + 1) % n) / n) - Math.PI / 2;
-    const midAngle  = (angle1 + angle2) / 2;
-    const forkR     = R * 0.62;
-    const fx = cx + forkR * Math.cos(midAngle);
-    const fy = cy + forkR * Math.sin(midAngle);
+    const pi = philPos[i];                   // filósofo i  (fork i está a su IZQUIERDA)
+    const pj = philPos[(i - 1 + n) % n];    // filósofo i-1
+
+    // Punto medio entre los dos filósofos que comparten este tenedor
+    let fx = (pi.x + pj.x) / 2;
+    let fy = (pi.y + pj.y) / 2;
+
+    // ── Caso especial N=2 ────────────────────────────────────
+    // Con solo 2 filósofos, ambos midpoints colapsan al centro de la mesa.
+    // Se desplazan perpendicularmente al eje que conecta a los dos filósofos.
+    if (n === 2) {
+      const ax = pi.x - pj.x, ay = pi.y - pj.y;
+      const len = Math.sqrt(ax * ax + ay * ay);
+      // Vector perpendicular unitario (rotación 90° del eje principal)
+      const perpX = -ay / len, perpY = ax / len;
+      const offset = R * 0.42;
+      const sign = (i === 0) ? 1 : -1;
+      fx += sign * perpX * offset;
+      fy += sign * perpY * offset;
+    }
+
+    // Rotación: atan2 del vector pj→pi para orientar el emoji a lo largo de la cuerda
+    const dx = pi.x - pj.x, dy = pi.y - pj.y;
+    const rotDeg = Math.atan2(dy, dx) * 180 / Math.PI + 90;
 
     const fork = document.createElement('div');
-    fork.className = 'fork-el free';
-    fork.id = 'fork-' + i;
-    fork.title = 'Tenedor ' + i;
-    fork.style.left = (fx - 14) + 'px';
-    fork.style.top  = (fy - 14) + 'px';
-    const rotDeg = (midAngle * 180 / Math.PI) + 90;
-    fork.style.transform = `rotate(${rotDeg}deg)`;
+    fork.className       = 'fork-side free';
+    fork.id              = 'fork-' + i;
+    fork.dataset.forkId  = i;
     fork.dataset.baseRot = rotDeg;
-    fork.innerHTML = '🍴';
+    fork.title           = 'Tenedor ' + i;
+    fork.style.left      = (fx - 13) + 'px';
+    fork.style.top       = (fy - 13) + 'px';
+    fork.style.transform = `rotate(${rotDeg}deg)`;
+    fork.textContent     = '🍴';
     scene.appendChild(fork);
   }
 
@@ -525,13 +561,13 @@ function updateForks(forkHeld, forkBy) {
     if (!el) continue;
     const baseRot = parseFloat(el.dataset.baseRot) || 0;
     if (forkHeld[i]) {
-      el.className = 'fork-el held';
-      el.style.transform = `rotate(${baseRot + 30}deg) scale(1.15)`;
-      el.style.filter = `brightness(1.3) drop-shadow(0 0 8px var(--gold2))`;
+      el.className = 'fork-side held';
+      el.style.transform = `rotate(${baseRot}deg) scale(1.3)`;
+      el.style.filter    = `brightness(1.5) drop-shadow(0 0 9px var(--gold2))`;
     } else {
-      el.className = 'fork-el free';
-      el.style.transform = `rotate(${baseRot}deg)`;
-      el.style.filter = `brightness(.45)`;
+      el.className = 'fork-side free';
+      el.style.transform = `rotate(${baseRot}deg) scale(1)`;
+      el.style.filter    = `brightness(.40)`;
     }
   }
 }
