@@ -224,7 +224,9 @@ def producer() -> None:
 def consumer(kind: str) -> None:
     """
     Extrae números del FRENTE del buffer solo si corresponden a su tipo (FIFO estricto).
-    Espera con condition.wait() cuando el buffer está vacío o el frente no es su tipo.
+        Espera con condition.wait() cuando no puede consumir:
+            - bloqueado: buffer vacío
+            - esperando: el frente existe, pero no es su tipo
 
     Terminación:
         Cuando _prod_done=True y ya no quedan números de su tipo en el buffer.
@@ -235,8 +237,8 @@ def consumer(kind: str) -> None:
     label_map = {'even': 'PARES', 'odd': 'IMPARES', 'prime': 'PRIMOS'}
     name      = f"CONSUMIDOR {label_map[kind]}"
 
-    set_state(actor_key, 'waiting')
-    log(f"{name} en espera de números...", kind)
+    set_state(actor_key, 'blocked')
+    log(f"{name} bloqueado — buffer vacío", 'blocked')
     emit_event('state_update')
 
     while True:
@@ -258,10 +260,17 @@ def consumer(kind: str) -> None:
                     log(f"{name} FIN — {c} números procesados | suma total = {s}", kind)
                     return
 
-                # Seguir esperando
-                if _states.get(actor_key) != 'waiting':
-                    set_state(actor_key, 'waiting')
-                    emit_event('state_update')
+                # Seguir esperando con estado según causa
+                if not _buffer:
+                    if _states.get(actor_key) != 'blocked':
+                        set_state(actor_key, 'blocked')
+                        log(f"{name} bloqueado — buffer vacío", 'blocked')
+                        emit_event('state_update')
+                else:
+                    if _states.get(actor_key) != 'waiting':
+                        set_state(actor_key, 'waiting')
+                        log(f"{name} en espera — frente no corresponde ({_buffer[0]})", kind)
+                        emit_event('state_update')
                 condition.wait()                        # libera lock, espera notify
 
             # SECCIÓN CRÍTICA: extraer del frente (FIFO)
