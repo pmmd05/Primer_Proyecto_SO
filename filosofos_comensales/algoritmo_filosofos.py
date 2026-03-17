@@ -1,17 +1,3 @@
-
-"""
-  FILÓSOFOS COMENSALES — Backend
-  Servidor Flask + SocketIO con lógica de simulación.
-  El frontend vive en templates/index.html.
-
-    Modelo de concurrencia:
-    - 1 hilo por filósofo.
-    - 1 lock por tenedor.
-    - Estado global protegido por locks para alimentar la UI.
-        - Mitigación de interbloqueo global con orden asimétrico al tomar tenedores.
-            (No implica garantía estricta de equidad entre filósofos.)
-"""
-
 import threading
 import time
 import random

@@ -1,14 +1,3 @@
-"""Backend de la simulación Productor-Consumidor.
-
-Este módulo expone una aplicación Flask + SocketIO que coordina:
-- un productor que inserta enteros en un buffer FIFO compartido,
-- tres consumidores (pares, impares y primos) que extraen solo cuando
-    el frente del buffer corresponde a su tipo.
-
-La sincronización se implementa con ``threading.Condition`` para evitar
-carreras en el acceso al buffer y para señalizar cambios de estado.
-"""
-
 import threading
 import time
 import os
