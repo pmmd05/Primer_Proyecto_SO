@@ -1,18 +1,12 @@
-#!/usr/bin/env python3
-"""
-=============================================================
-  PRODUCTOR-CONSUMIDOR — Backend
-  Sistemas Operativos — Universidad Rafael Landívar
-=============================================================
-  Servidor Flask + SocketIO con lógica de simulación.
-  El frontend vive en templates/index.html.
+"""Backend de la simulación Productor-Consumidor.
 
-  Los números se cargan desde el navegador mediante /upload.
-  No se requiere argumento de línea de comandos.
+Este módulo expone una aplicación Flask + SocketIO que coordina:
+- un productor que inserta enteros en un buffer FIFO compartido,
+- tres consumidores (pares, impares y primos) que extraen solo cuando
+    el frente del buffer corresponde a su tipo.
 
-  Uso:
-      python backend.py
-=============================================================
+La sincronización se implementa con ``threading.Condition`` para evitar
+carreras en el acceso al buffer y para señalizar cambios de estado.
 """
 
 import threading
@@ -22,7 +16,7 @@ import webbrowser
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from flask_socketio import SocketIO
 
-# CONFIGURACIÓN 
+# Configuración de la simulación.
 BUFFER_SIZE    = 10    # Capacidad máxima del buffer compartido
 PRODUCER_DELAY = 0.50  # Pausa entre producciones
 CONSUMER_DELAY = 0.70  # Pausa al procesar un número consumido
@@ -32,7 +26,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_DIR = os.path.join(SCRIPT_DIR, 'templates', 'imagenes')
 
 
-# FLASK + SOCKETIO
+# Inicialización de Flask + SocketIO.
 app = Flask(
     __name__,
     template_folder=os.path.join(SCRIPT_DIR, 'templates'),
@@ -46,9 +40,8 @@ socketio = SocketIO(
     engineio_logger=False,
 )
 
-#  FUNCIONES AUXILIARES PARA CLASIFICACIÓN
 def is_prime(n: int) -> bool:
-    """Retorna True si n es primo."""
+    """Retorna ``True`` si ``n`` es primo."""
     if n < 2:      return False
     if n == 2:     return True
     if n % 2 == 0: return False
@@ -58,47 +51,47 @@ def is_prime(n: int) -> bool:
 
 
 def classify(n: int) -> str:
-    """
-    Clasifica un número según prioridad: primo > par > impar.
-    Un número primo (aunque sea impar) se clasifica como 'prime'.
+    """Clasifica ``n`` como ``prime``, ``even`` u ``odd``.
+
+    Regla de prioridad: primo > par > impar.
     """
     if is_prime(n):  return 'prime'
     if n % 2 == 0:   return 'even'
     return 'odd'
 
 
-# ESTADO COMPARTIDO DE LA SIMULACIÓN
-_numbers: list = [] # Números cargados desde el archivo
-_filepath: str = '' # Nombre del archivo cargado
+# Estado compartido de la simulación.
+_numbers: list = []  # Números cargados desde el archivo.
+_filepath: str = ''  # Nombre del archivo cargado.
 
-# Buffer compartido y variable de condición (lock + señalización)
+# Buffer compartido y condición para sincronización.
 _buffer: list = []
 condition = threading.Condition()
 _prod_done: bool = False
 
-# Estado de cada actor para la UI 
+# Estado de cada actor para la UI.
 _states: dict = {}
 _states_lock = threading.Lock()
 
-# Actor actualmente en sección crítica (None = nadie)
+# Actor actualmente en sección crítica (None = nadie).
 _critical_actor: str = None
 _critical_lock = threading.Lock()
 
-# Estadísticas de consumidores
+# Estadísticas de consumidores.
 _sums: dict = {'even': 0, 'odd': 0, 'prime': 0}
 _counts: dict = {'even': 0, 'odd': 0, 'prime': 0}
 _stats_lock = threading.Lock()
 
-# Control de ejecución
+# Control de ejecución de simulación.
 _sim_running: bool = False
 _sim_lock = threading.Lock()
 
 
-# GESTIÓN DE ESTADO
 def reset() -> None:
-    """Reinicia el estado de la simulación para permitir una nueva ejecución."""
+    """Reinicia estado compartido para iniciar una nueva simulación."""
     global _buffer, _prod_done, _states, _critical_actor, _sums, _counts
 
+    # Restablece estructuras compartidas para evitar arrastrar datos previos.
     _buffer         = []
     _prod_done      = False
     _critical_actor = None
@@ -113,19 +106,22 @@ def reset() -> None:
 
 
 def set_state(actor: str, state: str) -> None:
+    """Actualiza el estado visible de un actor para la interfaz."""
     with _states_lock:
         _states[actor] = state
 
 
 def set_critical(actor) -> None:
-    """Establece qué actor está en sección crítica (None para liberar)."""
+    """Marca qué actor está en sección crítica; ``None`` libera la marca."""
     global _critical_actor
     with _critical_lock:
         _critical_actor = actor
 
 
 def snapshot() -> dict:
-    """Captura atómica del estado completo para enviar al cliente."""
+    """Retorna una copia consistente del estado para emitir a clientes."""
+    # Se adquieren locks por separado y se copian estructuras para no exponer
+    # referencias mutables a otros hilos ni al frontend.
     with _critical_lock:
         ca = _critical_actor
     with _states_lock:
@@ -143,6 +139,7 @@ def snapshot() -> dict:
 
 
 def emit_event(event: str, extra: dict = None) -> None:
+    """Emite un evento SocketIO con el snapshot actual y datos extra."""
     data = snapshot()
     if extra:
         data.update(extra)
@@ -150,18 +147,20 @@ def emit_event(event: str, extra: dict = None) -> None:
 
 
 def log(msg: str, kind: str = 'system') -> None:
+    """Emite una entrada de log con timestamp para el frontend."""
     ts = time.strftime('%H:%M:%S')
     socketio.emit('log', {'msg': msg, 'kind': kind, 'ts': ts})
 
 
-#  PRODUCTOR
 def producer() -> None:
     """
-    Lee los números del archivo ya cargado y los inserta al FINAL del buffer (FIFO).
-    Usa condition.wait() cuando el buffer está lleno (productor bloqueado).
+        Inserta números en el buffer FIFO desde ``_numbers``.
 
-    Sección crítica: bloque 'with condition'.
-    Solo un hilo puede ejecutar código dentro de ese bloque a la vez.
+        Comportamiento de sincronización:
+        - Si el buffer está lleno, el productor pasa a estado ``blocked`` y espera.
+        - La inserción se realiza dentro de la sección crítica protegida por
+            ``condition``.
+        - Tras insertar, notifica a los consumidores con ``notify_all``.
     """
     global _prod_done
 
@@ -169,34 +168,35 @@ def producer() -> None:
     log(f"PRODUCTOR iniciando — {len(_numbers)} números en cola", 'producer')
     emit_event('state_update')
 
+    # Recorre los números cargados y los publica uno por uno en el buffer.
     for i, num in enumerate(_numbers):
         kind  = classify(num)
         label = {'even': 'PAR', 'odd': 'IMPAR', 'prime': 'PRIMO'}[kind]
         time.sleep(PRODUCER_DELAY)
 
-        with condition: # ADQUIERE LOCK
-
-            # Esperar si el buffer está lleno, productor bloqueado
+        with condition:
+            # Si el buffer está lleno, el productor cede el lock y espera señal.
             if len(_buffer) >= BUFFER_SIZE:
                 set_state('producer', 'blocked')
                 log(f"PRODUCTOR bloqueado — buffer lleno ({len(_buffer)}/{BUFFER_SIZE})", 'blocked')
                 emit_event('state_update')
                 while len(_buffer) >= BUFFER_SIZE:
-                    condition.wait() # libera lock, espera notify
+                    # wait() libera el lock de condition y lo recupera al despertar.
+                    condition.wait()
 
-            # SECCIÓN CRÍTICA: insertar en buffer
+            # Sección crítica: inserción FIFO al final del buffer.
             set_state('producer', 'critical')
             set_critical('producer')
             emit_event('critical_enter', {'actor': 'producer', 'num': num, 'kind': kind})
 
-            time.sleep(CRITICAL_HOLD) # pausa visual en SC
-            _buffer.append(num) # insertar al final (FIFO)
+            time.sleep(CRITICAL_HOLD)
+            _buffer.append(num)
             buf_size = len(_buffer)
             buf_snap = list(_buffer)
 
             set_critical(None)
-            condition.notify_all()                      # despertar consumidores
-        # LIBERA LOCK
+            # Se despiertan todos porque cualquier consumidor podría poder tomar.
+            condition.notify_all()
 
         set_state('producer', 'producing')
         log(f"PRODUCTOR insertó {num} ({label}) → buffer [{buf_size}/{BUFFER_SIZE}]", 'producer')
@@ -208,9 +208,10 @@ def producer() -> None:
             'buffer': buf_snap,
         })
 
-    # Señal de fin: todos los números fueron producidos
+    # Señal de fin: ya no habrá nuevas inserciones.
     with condition:
         _prod_done = True
+        # Importante para que los consumidores puedan evaluar condición de salida.
         condition.notify_all()
 
     set_state('producer', 'done')
@@ -218,20 +219,16 @@ def producer() -> None:
     emit_event('state_update')
 
 
-# ──────────────────────────────────────────────────────────────
-#  CONSUMIDOR (genérico, parametrizado por tipo)
-# ──────────────────────────────────────────────────────────────
 def consumer(kind: str) -> None:
     """
-    Extrae números del FRENTE del buffer solo si corresponden a su tipo (FIFO estricto).
-        Espera con condition.wait() cuando no puede consumir:
-            - bloqueado: buffer vacío
-            - esperando: el frente existe, pero no es su tipo
+    Consume números del frente si coinciden con el tipo ``kind``.
 
-    Terminación:
-        Cuando _prod_done=True y ya no quedan números de su tipo en el buffer.
-        No hay deadlock: si un tipo está bloqueado, los otros tipos van consumiendo
-        sus elementos, liberando espacio y despertando al productor.
+    Estados de espera:
+    - ``blocked`` cuando el buffer está vacío.
+    - ``waiting`` cuando hay frente, pero no corresponde a su tipo.
+
+    Termina cuando el productor ya finalizó y no quedan números de su tipo en
+    el buffer.
     """
     actor_key = f'consumer_{kind}'
     label_map = {'even': 'PARES', 'odd': 'IMPARES', 'prime': 'PRIMOS'}
@@ -242,14 +239,14 @@ def consumer(kind: str) -> None:
     emit_event('state_update')
 
     while True:
-        with condition:                                 # ADQUIERE LOCK
+        with condition:
 
             while True:
-                # ¿El frente del buffer es mi tipo? → puedo tomar
+                # Puede consumir solo si el frente coincide con su tipo.
                 if _buffer and classify(_buffer[0]) == kind:
                     break
 
-                # ¿El productor terminó y ya no hay elementos de mi tipo?
+                # Finaliza cuando su tipo ya no podrá aparecer.
                 if _prod_done and not any(classify(n) == kind for n in _buffer):
                     set_state(actor_key, 'done')
                     log(f"{name} recibió señal de fin", kind)
@@ -260,7 +257,7 @@ def consumer(kind: str) -> None:
                     log(f"{name} FIN — {c} números procesados | suma total = {s}", kind)
                     return
 
-                # Seguir esperando con estado según causa
+                # Diferencia explícita de causa de espera para la UI.
                 if not _buffer:
                     if _states.get(actor_key) != 'blocked':
                         set_state(actor_key, 'blocked')
@@ -271,23 +268,24 @@ def consumer(kind: str) -> None:
                         set_state(actor_key, 'waiting')
                         log(f"{name} en espera — frente no corresponde ({_buffer[0]})", kind)
                         emit_event('state_update')
-                condition.wait()                        # libera lock, espera notify
+                # El hilo cede el lock y espera hasta nuevo cambio en el buffer.
+                condition.wait()
 
-            # SECCIÓN CRÍTICA: extraer del frente (FIFO)
+            # Sección crítica: extracción FIFO desde el frente.
             set_state(actor_key, 'critical')
             set_critical(actor_key)
             emit_event('critical_enter', {'actor': actor_key, 'kind': kind})
 
-            time.sleep(CRITICAL_HOLD)                   # pausa visual en SC
-            num      = _buffer.pop(0)                   # extraer frente
+            time.sleep(CRITICAL_HOLD)
+            num      = _buffer.pop(0)
             buf_size = len(_buffer)
             buf_snap = list(_buffer)
 
             set_critical(None)
-            condition.notify_all()                      # despertar productor
-        # LIBERA LOCK 
+            # Puede liberar al productor (espacio disponible) o a otro consumidor.
+            condition.notify_all()
 
-        # Procesar número FUERA de la sección crítica
+        # El procesamiento ocurre fuera de la sección crítica para no retener el lock.
         set_state(actor_key, 'consuming')
         time.sleep(CONSUMER_DELAY)
 
@@ -308,11 +306,11 @@ def consumer(kind: str) -> None:
 
         set_state(actor_key, 'waiting')
 
-# SIMULACIÓN
 def run_simulation() -> None:
-    """Lanza el productor y los 3 consumidores, espera a que todos terminen."""
+    """Ejecuta una corrida completa y emite los resultados finales."""
     global _sim_running
 
+    # Se limpia estado y se notifica inicio antes de lanzar hilos.
     reset()
     socketio.emit('simulation_start', snapshot())
     log("════ SIMULACIÓN INICIADA ════", 'system')
@@ -323,6 +321,7 @@ def run_simulation() -> None:
         threading.Thread(target=consumer, args=('prime',), name='C-Primos',  daemon=True),
         threading.Thread(target=producer,                  name='Productor', daemon=True),
     ]
+    # Los hilos daemon terminan con el proceso; join asegura cierre ordenado.
     for t in threads: t.start()
     for t in threads: t.join()
 
@@ -337,20 +336,19 @@ def run_simulation() -> None:
     socketio.emit('simulation_end', {'sums': final_sums, 'counts': final_counts})
 
 
-# ──────────────────────────────────────────────────────────────
-#  FLASK — RUTAS
-# ──────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
-    """Sirve el frontend. Los datos del archivo se cargan vía /upload."""
+    """Renderiza la interfaz principal de la simulación."""
     return render_template('index.html', buffer_size=BUFFER_SIZE)
 
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """
-    Recibe un archivo .txt del navegador, lo parsea y carga los números.
-    Retorna estadísticas en JSON para que el frontend actualice la UI.
+    Carga números desde un archivo de texto enviado por el frontend.
+
+    El archivo debe contener un entero por línea. Retorna métricas para
+    actualizar la interfaz y habilitar la ejecución.
     """
     global _numbers, _filepath
 
@@ -358,13 +356,14 @@ def upload_file():
     if not f:
         return jsonify({'success': False, 'error': 'No se recibió ningún archivo.'})
 
-    # Leer y parsear línea por línea
+    # Lectura y parseo defensivo: líneas vacías se ignoran.
     try:
         content = f.read().decode('utf-8')
     except UnicodeDecodeError:
         return jsonify({'success': False, 'error': 'El archivo debe estar en UTF-8.'})
 
     nums, skipped = [], []
+    # Se conserva conteo de líneas inválidas para reportarlo al usuario.
     for i, line in enumerate(content.splitlines(), 1):
         line = line.strip()
         if not line:
@@ -380,6 +379,7 @@ def upload_file():
     _numbers  = nums
     _filepath = f.filename or 'archivo.txt'
 
+    # Estos conteos son métricas para la UI (no afectan la sincronización).
     evens  = [n for n in nums if classify(n) == 'even']
     odds   = [n for n in nums if classify(n) == 'odd']
     primes = [n for n in nums if classify(n) == 'prime']
@@ -400,11 +400,9 @@ def serve_image(filename):
     return send_from_directory(IMAGE_DIR, filename)
 
 
-# ──────────────────────────────────────────────────────────────
-#  SOCKETIO — EVENTOS
-# ──────────────────────────────────────────────────────────────
 @socketio.on('connect')
 def on_connect():
+    """Envía al cliente recién conectado el estado actual del servidor."""
     socketio.emit('ready', {
         'filepath':    _filepath,
         'total':       len(_numbers),
@@ -415,21 +413,22 @@ def on_connect():
 
 @socketio.on('start')
 def on_start():
+    """Inicia la simulación si hay datos cargados y no hay otra en curso."""
     global _sim_running
     if not _numbers:
         socketio.emit('error', {'msg': 'Carga un archivo antes de iniciar.'})
         return
     with _sim_lock:
+        # Guardia de concurrencia para evitar ejecuciones solapadas.
         if _sim_running:
             return
         _sim_running = True
+    # La simulación corre en segundo plano para no bloquear el hilo de SocketIO.
     threading.Thread(target=run_simulation, daemon=True).start()
 
 
-# ──────────────────────────────────────────────────────────────
-#  MAIN
-# ──────────────────────────────────────────────────────────────
 def main():
+    """Punto de entrada: muestra resumen de arranque y levanta el servidor."""
     print(f"\n{'─'*54}")
     print(f"  Productor-Consumidor — SO — URL")
     print(f"{'─'*54}")
@@ -441,6 +440,7 @@ def main():
     if not os.path.isdir(IMAGE_DIR):
         print(f"[AVISO] No se encontró 'templates/imagenes/' — las imágenes de estado no se mostrarán.\n")
 
+    # Abre navegador automáticamente con leve retraso para dar tiempo al servidor.
     threading.Timer(1.5, lambda: webbrowser.open('http://localhost:5000')).start()
     socketio.run(
         app,

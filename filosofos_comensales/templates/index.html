@@ -10,6 +10,7 @@
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <style>
 :root {
+  /* Variables de color y tipografía centralizadas para mantener tema consistente. */
   --bg:    #1a1c1e;
   --bg1:   #22262b;
   --bg2:   #2b3038;
@@ -27,16 +28,19 @@
 
 *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
+  /* Fondo base del lienzo de simulación. */
   background: var(--bg);
   color: var(--txt);
   font-family: var(--fm);
   font-size: 12px;
   min-height: 100vh;
+  /* Evita scroll horizontal cuando la escena crece dinámicamente. */
   overflow-x: hidden;
 }
 
-/* ── Header ── */
+/* Encabezado superior con controles de parámetros de simulación. */
 header {
+  /* Se mantiene visible mientras se navega por la página. */
   position: sticky; top: 0; z-index: 300;
   background: #0e0c0a;
   border-bottom: 1px solid var(--bord2);
@@ -52,6 +56,7 @@ header {
 .ctrl-group { display: flex; align-items: center; gap: 6px; }
 .ctrl-lbl { font-family: var(--fh); font-size: 11px; letter-spacing: 2px; color: var(--dim); }
 .ctrl-input {
+  /* Inputs compactos para controlar N y ciclos sin romper el header. */
   width: 52px; padding: 4px 6px;
   background: var(--bg2); border: 1px solid var(--bord2);
   color: var(--gold2); font-family: var(--fm);
@@ -59,6 +64,7 @@ header {
 }
 .ctrl-input:focus { outline: none; border-color: var(--gold); }
 .btn-go {
+  /* Botón principal de acción para iniciar la simulación. */
   font-family: var(--fh); font-size: 11px; letter-spacing: 2px;
   padding: 8px 18px; border: 1px solid var(--gold);
   background: rgba(255,255,255,.1); color: var(--gold2);
@@ -67,13 +73,16 @@ header {
 .btn-go:hover:not(:disabled) { background: rgba(255,255,255,.2); }
 .btn-go:disabled { opacity: .35; cursor: default; }
 
-/* ── Layout ── */
+/* Contenedor general de la página. */
 .layout { display: flex; flex-direction: column; align-items: center; padding: 16px; }
+/* Columna centrada para escena + estadísticas + log. */
 
-/* ── Escena ── */
+/* Escena central donde se renderiza la mesa circular. */
 .scene-wrap { position: relative; width: 540px; height: 540px; flex-shrink: 0; }
+/* Contenedor relativo: todos los asientos/tenedores se posicionan absoluto dentro. */
 
 .table-el {
+  /* Mesa centrada con apariencia metálica para referencia visual de la ronda. */
   position: absolute; top: 50%; left: 50%;
   width: 200px; height: 200px;
   transform: translate(-50%,-50%);
@@ -88,13 +97,15 @@ header {
   color: #fff; text-align: center; line-height: 1.6;
 }
 
-/* ── Filósofo ── */
+/* Tarjetas de filósofos alrededor de la mesa. */
 .phil-seat {
+  /* Cada asiento se ubica por coordenadas calculadas en JS. */
   position: absolute;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   width: 108px;
 }
 .phil-card {
+  /* Tarjeta visual por filósofo (imagen, estado y contador). */
   background: var(--bg1); border: 1px solid var(--border); border-radius: 10px;
   padding: 8px 6px 6px; width: 100%;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -103,8 +114,10 @@ header {
 .phil-card.g-waiting { border-color: var(--amber); }
 .phil-card.g-eating  { border-color: var(--gold2); }
 .phil-card.g-done    { border-color: var(--dim); opacity: .6; }
+/* Clases de estado: solo cambian acento de borde y énfasis. */
 
 .phil-img {
+  /* Ícono de estado del filósofo; se modula por filtros según estado. */
   width: 58px; height: 58px; object-fit: contain; border-radius: 6px;
   transition: filter .25s;
 }
@@ -124,8 +137,9 @@ header {
 .phil-eats { font-size: 11px; color: var(--dim); font-family: var(--fh); }
 .phil-eats b { color: var(--gold2); }
 
-/* ── Tenedores ── */
+/* Íconos de tenedores (libres u ocupados). */
 .fork-side {
+  /* Los tenedores no son interactivos: solo representan estado del backend. */
   position: absolute; width: 26px; height: 26px;
   display: flex; align-items: center; justify-content: center;
   font-size: 17px; pointer-events: none; user-select: none;
@@ -133,9 +147,11 @@ header {
 }
 .fork-side.free { filter: brightness(.55); }
 .fork-side.held { filter: brightness(1.6) drop-shadow(0 0 6px var(--gold2)); }
+/* Contraste fuerte para distinguir rápidamente tenedor libre vs tomado. */
 
-/* ── Stats ── */
+/* Chips-resumen por filósofo (estado en línea). */
 .stats-bar {
+  /* Resumen horizontal de estados para lectura rápida sin mirar la mesa. */
   display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
   max-width: 600px; margin-top: 14px;
 }
@@ -148,8 +164,9 @@ header {
 .stat-chip.s-thinking .stat-dot { background: var(--blue); }
 .stat-chip.s-waiting  .stat-dot { background: var(--amber); }
 .stat-chip.s-eating   .stat-dot { background: var(--gold2); }
+/* El punto de color funciona como semáforo de estado. */
 
-/* ── Log ── */
+/* Bitácora de eventos emitidos por el backend. */
 .log-sec { width: 100%; max-width: 900px; margin-top: 14px; }
 .log-wrap { background: var(--bg1); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
 .log-hdr {
@@ -164,6 +181,7 @@ header {
 }
 .log-clr:hover { color: var(--txt); border-color: var(--bord2); }
 .log-body {
+  /* Altura fija para mantener layout estable durante simulaciones largas. */
   height: 150px; overflow-y: auto;
   scrollbar-width: thin; scrollbar-color: var(--bord2) transparent;
 }
@@ -174,8 +192,9 @@ header {
 .log-ts   { color: var(--dim); min-width: 58px; font-size: 12px; flex-shrink: 0; }
 .c-system { color: var(--dim); font-style: italic; }
 
-/* ── Overlay final ── */
+/* Overlay con resumen final al terminar la corrida. */
 .overlay {
+  /* Capa modal para bloquear interacción al mostrar resumen final. */
   display: none; position: fixed; inset: 0;
   background: rgba(10,7,5,.92);
   z-index: 500; align-items: center; justify-content: center;
@@ -190,6 +209,7 @@ header {
   color: var(--gold2); margin-bottom: 20px;
 }
 .fin-row {
+  /* Fila de resultados por filósofo en el modal final. */
   display: flex; align-items: center; justify-content: space-between;
   background: var(--bg2); border-radius: 7px; padding: 9px 14px; margin-bottom: 7px;
   font-family: var(--fh); font-size: 12px; letter-spacing: 2px;
@@ -206,6 +226,7 @@ header {
 <body>
 <div class="page">
 
+<!-- Header: configuración rápida de N filósofos y ciclos. -->
 <header>
   <div class="logo">FILÓSOFOS COMENSALES &nbsp;/&nbsp; SO — URL</div>
   <div class="hdr-r">
@@ -221,6 +242,7 @@ header {
   </div>
 </header>
 
+<!-- Escena principal + stats + log de eventos. -->
 <div class="layout">
   <div class="scene-wrap" id="scene">
     <div class="table-el" id="table-el">
@@ -228,6 +250,7 @@ header {
     </div>
   </div>
 
+  <!-- Chips de estado por filósofo (se crean dinámicamente en buildStats). -->
   <div class="stats-bar" id="stats-bar"></div>
 
   <div class="log-sec">
@@ -236,11 +259,13 @@ header {
         <span>◉ REGISTRO DE EVENTOS</span>
         <button class="log-clr" onclick="document.getElementById('log-body').innerHTML=''">LIMPIAR</button>
       </div>
+      <!-- Contenedor de logs en orden inverso (evento más reciente arriba). -->
       <div class="log-body" id="log-body"></div>
     </div>
   </div>
 </div>
 
+<!-- Ventana modal de cierre con resultados por filósofo. -->
 <div class="overlay" id="overlay">
   <div class="fin-card">
     <div class="fin-title">✦ BANQUETE COMPLETADO ✦</div>
@@ -258,38 +283,49 @@ header {
 </script>
 
 <script>
+// Lee configuración serializada por Jinja para evitar hardcodear valores en JS.
 const simConfig   = JSON.parse(document.getElementById('sim-config').textContent);
 const ALL_NAMES   = simConfig.names;
 const DEFAULT_N   = simConfig.defaultN;
 const DEFAULT_CYC = simConfig.defaultCycles;
 
+// Paleta estable por filósofo para mantener identidad visual en logs/stats.
 const PHIL_COLORS = [
   '#7ec8e3','#4fa8d5','#a8d8ea','#5bbfdb','#3a9abf',
   '#8ecae6','#2a8ab0','#b0dff0','#6ab4d4','#44a0c8',
 ];
 
-const SEAT_W = 108, SEAT_H = 128;
+const SEAT_W = 108, SEAT_H = 128; // Tamaño lógico de cada tarjeta de filósofo.
 
+// Radio dinámico para evitar solapamientos cuando n cambia.
 function sceneRadius(n) { return Math.min(Math.max(220, n * 52), 300); }
 
 function buildScene(n, names) {
+  // Recalcula dimensiones de escena/mesa y reconstruye nodos dinámicos.
   const scene     = document.getElementById('scene');
   const tableEl   = document.getElementById('table-el');
   const sceneSize = Math.max(540, n * 110 + 60);
+  // Escala mínima para mantener legibilidad cuando n es pequeño.
   scene.style.width = scene.style.height = sceneSize + 'px';
 
   const cx = sceneSize / 2, cy = sceneSize / 2, R = sceneRadius(n);
+  // Centro geométrico de la escena (origen para coordenadas polares).
+  // Limpia filósofos/tenedores anteriores antes de reconstruir.
   document.querySelectorAll('.phil-seat, .fork-side').forEach(el => el.remove());
 
   const tableSize = Math.max(160, sceneSize * 0.28);
+  // La mesa también escala para mantener proporción visual con la escena.
   tableEl.style.width = tableEl.style.height = tableSize + 'px';
 
   for (let i = 0; i < n; i++) {
+    // Posicionamiento polar de cada asiento alrededor de la mesa.
+    // angle arranca arriba (-pi/2) y gira en sentido horario.
     const angle = (2 * Math.PI * i / n) - Math.PI / 2;
     const px = cx + R * Math.cos(angle), py = cy + R * Math.sin(angle);
     const seat = document.createElement('div');
     seat.className = 'phil-seat';
     seat.id = 'seat-' + i;
+    // left/top son coordenadas absolutas dentro de .scene-wrap.
     seat.style.left = (px - SEAT_W / 2) + 'px';
     seat.style.top  = (py - SEAT_H / 2) + 'px';
     seat.innerHTML = `
@@ -303,20 +339,25 @@ function buildScene(n, names) {
   }
 
   const dAngle = (2 * Math.PI) / n;
+  // Posiciones de referencia para ubicar tenedores entre filósofos vecinos.
   const philPos = Array.from({ length: n }, (_, i) => ({
     x: cx + R * Math.cos(dAngle * i - Math.PI / 2),
     y: cy + R * Math.sin(dAngle * i - Math.PI / 2),
   }));
 
   for (let i = 0; i < n; i++) {
+    // El tenedor i se ubica entre i y su vecino anterior (mesa circular).
     const pi = philPos[i], pj = philPos[(i - 1 + n) % n];
     let fx = (pi.x + pj.x) / 2, fy = (pi.y + pj.y) / 2;
+    // Caso n=2: ajuste manual para no superponer ambos tenedores en el centro.
     if (n === 2) { fx = cx + (i === 0 ? R * 0.55 : -R * 0.55); fy = cy; }
 
     const rotDeg = Math.atan2(pi.y - pj.y, pi.x - pj.x) * 180 / Math.PI + 90;
+    // Rotación estética para alinear el icono con el borde de la mesa.
     const fork = document.createElement('div');
     fork.className = 'fork-side free';
     fork.id = 'fork-' + i;
+    // Guarda rotación base para reusar en updateForks al animar escala.
     fork.dataset.baseRot = rotDeg;
     fork.title = 'Tenedor ' + i;
     fork.style.left = (fx - 13) + 'px';
@@ -330,6 +371,7 @@ function buildScene(n, names) {
 }
 
 function buildStats(n, names) {
+  // Construye chips de estado para lectura rápida, independientes de la escena.
   const bar = document.getElementById('stats-bar');
   bar.innerHTML = '';
   for (let i = 0; i < n; i++) {
@@ -347,37 +389,49 @@ const IMG_MAP  = { idle:'./imagenes/pensando.png', thinking:'./imagenes/pensando
 const LBL_MAP  = { idle:'IDLE', thinking:'PENSANDO', waiting:'ESPERANDO', eating:'COMIENDO', done:'TERMINADO ✓' };
 const CARD_CLS = { idle:'g-thinking', thinking:'g-thinking', waiting:'g-waiting', eating:'g-eating', done:'g-done' };
 const CHIP_CLS = { idle:'s-thinking', thinking:'s-thinking', waiting:'s-waiting', eating:'s-eating', done:'s-done' };
+// Tablas de mapeo: desacoplan estado lógico del detalle visual.
 
 function updatePhilosopher(i, state, count) {
+  // Aplica estado visual completo de un filósofo (tarjeta + chip + contador).
   const imgEl  = document.getElementById('img-'  + i);
   const cardEl = document.getElementById('card-' + i);
   const lblEl  = document.getElementById('slbl-' + i);
   const eatsEl = document.getElementById('eats-' + i);
   const chipEl = document.getElementById('chip-' + i);
   const cLblEl = document.getElementById('chip-lbl-' + i);
+  // Si la escena aún no está montada, evita errores por referencias null.
   if (!imgEl) return;
 
   imgEl.src        = IMG_MAP[state] || IMG_MAP.idle;
   imgEl.className  = 'phil-img s-' + state;
   cardEl.className = 'phil-card ' + (CARD_CLS[state] || 'g-thinking');
 
+  // Color derivado del estado: prioridad a estados especiales sobre color base.
   const color = state==='eating' ? 'var(--gold2)' : state==='waiting' ? 'var(--amber)' : state==='done' ? 'var(--dim)' : PHIL_COLORS[i % PHIL_COLORS.length];
   lblEl.textContent = LBL_MAP[state] || state.toUpperCase();
   lblEl.style.color = color;
 
+  // Mantiene contador de comidas sincronizado con snapshot del backend.
   if (eatsEl) eatsEl.innerHTML = `comidas: <b>${count}</b>`;
+  // El chip refleja estado resumido (punto de color + etiqueta corta).
   if (chipEl) chipEl.className = 'stat-chip ' + (CHIP_CLS[state] || 's-thinking');
-  if (cLblEl) { cLblEl.textContent = LBL_MAP[state] || state; cLblEl.style.color = color; }
+  if (cLblEl) {
+    cLblEl.textContent = LBL_MAP[state] || state;
+    cLblEl.style.color = color;
+  }
 }
 
 function updateForks(forkHeld) {
+  // Refleja en UI qué tenedores están tomados actualmente.
   if (!forkHeld) return;
   for (let i = 0; i < forkHeld.length; i++) {
     const el = document.getElementById('fork-' + i);
     if (!el) continue;
     const baseRot = parseFloat(el.dataset.baseRot) || 0;
+    // Cambia clase para estilo base y agrega escala cuando el tenedor está tomado.
     el.className = 'fork-side ' + (forkHeld[i] ? 'held' : 'free');
     el.style.transform = `rotate(${baseRot}deg)${forkHeld[i] ? ' scale(1.3)' : ''}`;
+    // Filtro inline para reforzar contraste visual más allá de la clase CSS.
     el.style.filter = forkHeld[i]
       ? 'brightness(1.5) drop-shadow(0 0 9px var(--gold2))'
       : 'brightness(.55)';
@@ -385,21 +439,27 @@ function updateForks(forkHeld) {
 }
 
 function applySnapshot(data) {
+  // Snapshot enviado por backend: fuente de verdad para sincronizar la UI.
   if (!data) return;
+  // Si no viene n, se usa el valor por defecto de arranque como fallback.
   const n = data.n || DEFAULT_N;
+  // states/counts y fork_held llegan desde backend en cada evento relevante.
   if (data.states) for (let i = 0; i < n; i++) updatePhilosopher(i, data.states[i]||'idle', data.counts?.[i]||0);
   updateForks(data.fork_held);
 }
 
 function addLog(msg, kind, ts) {
+  // kind puede ser 'system' o índice de filósofo serializado como string.
   const body = document.getElementById('log-body');
   const row  = document.createElement('div');
   row.className = 'log-row';
   const philIdx = parseInt(kind);
+  // Si kind es número, se colorea el log con el color del filósofo.
   const color   = isNaN(philIdx) ? '' : PHIL_COLORS[philIdx % PHIL_COLORS.length];
   const cls     = isNaN(philIdx) ? 'c-system' : '';
   row.innerHTML = `<span class="log-ts">${ts}</span><span class="${cls}" style="color:${color}">${msg}</span>`;
   body.insertBefore(row, body.firstChild);
+  // Tope fijo para evitar crecimiento indefinido del DOM en sesiones largas.
   if (body.children.length > 200) body.removeChild(body.lastChild);
 }
 
@@ -407,12 +467,16 @@ const socket = io();
 let N = DEFAULT_N;
 
 socket.on('connect', () => {
+  // Construcción inicial al conectar por primera vez.
   addLog('Conectado al servidor', 'system', new Date().toLocaleTimeString());
   buildScene(DEFAULT_N, ALL_NAMES.slice(0, DEFAULT_N));
 });
+// ready permite rehidratar pantalla si el servidor ya tiene estado cargado.
 socket.on('ready', data => { if (data.n) buildScene(data.n, data.names || ALL_NAMES.slice(0, data.n)); });
+// En "ready" aún no hay corrida activa; solo sincroniza estructura inicial.
 socket.on('simulation_start', data => {
   N = data.n;
+  // Reinicia escena para reflejar parámetros efectivos aceptados por backend.
   buildScene(N, data.names || ALL_NAMES.slice(0, N));
   applySnapshot(data);
   document.getElementById('btn-go').disabled = true;
@@ -421,6 +485,7 @@ socket.on('simulation_start', data => {
   document.getElementById('inp-c').disabled = true;
   document.getElementById('table-text').innerHTML = `${N} FILÓSOFOS<br>${data.cycles} CICLOS`;
 });
+// Eventos intermedios: el backend envía snapshot parcial/total y se aplica igual.
 socket.on('state_update',  data => applySnapshot(data));
 socket.on('fork_attempt',  data => applySnapshot(data));
 socket.on('fork_taken',    data => { applySnapshot(data); updateForks(data.fork_held); });
@@ -429,11 +494,14 @@ socket.on('eating_end',    data => applySnapshot(data));
 socket.on('log',           data => addLog(data.msg, data.kind, data.ts));
 
 socket.on('simulation_end', data => {
+  // Muestra overlay final con barras de progreso por filósofo.
   document.getElementById('btn-go').textContent = '✓ COMPLETADO';
   const rows  = document.getElementById('fin-rows');
+  // Limpia resultados previos para no mezclar corridas distintas.
   rows.innerHTML = '';
   const names = data.names || ALL_NAMES.slice(0, data.counts.length);
   data.counts.forEach((c, i) => {
+    // Barra textual: proporción de ciclos completados sobre 10 bloques.
     const bar = '█'.repeat(Math.round(c / data.cycles * 10)) + '░'.repeat(10 - Math.round(c / data.cycles * 10));
     const row = document.createElement('div');
     row.className = 'fin-row';
@@ -447,23 +515,30 @@ socket.on('simulation_end', data => {
 });
 
 function startSim() {
+  // Sanitiza entradas en frontend; backend vuelve a validar por seguridad.
   const n = Math.max(2, Math.min(10, parseInt(document.getElementById('inp-n').value) || DEFAULT_N));
   const c = Math.max(1, Math.min(50, parseInt(document.getElementById('inp-c').value) || DEFAULT_CYC));
+  // Se envían parámetros ya normalizados para evitar NaN o fuera de rango.
   socket.emit('start', { n, cycles: c });
 }
 
 function restartUI() {
+  // Reinicio visual local tras cerrar overlay de resultados.
   document.getElementById('overlay').classList.remove('show');
   const btn = document.getElementById('btn-go');
   btn.disabled = false; btn.textContent = '▶ INICIAR';
   document.getElementById('inp-n').disabled = false;
   document.getElementById('inp-c').disabled = false;
+  // Se vacía log para iniciar la nueva corrida con historial limpio.
   document.getElementById('log-body').innerHTML = '';
+  // Respeta el N del input para la geometría de escena.
+  // Nota: la lista de nombres sigue acotada por DEFAULT_N en esta versión.
   buildScene(parseInt(document.getElementById('inp-n').value) || DEFAULT_N, ALL_NAMES.slice(0, DEFAULT_N));
   document.getElementById('table-text').innerHTML = 'MESA<br>CIRCULAR';
 }
 
 document.getElementById('inp-n').addEventListener('change', () => {
+  // Re-render en vivo de la escena al cambiar N antes de iniciar.
   const n = Math.max(2, Math.min(10, parseInt(document.getElementById('inp-n').value) || DEFAULT_N));
   buildScene(n, ALL_NAMES.slice(0, n));
 });

@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Pathway+Gothic+One&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <style>
+
 :root {
   --bg:#1a1c1e; --bg1:#22262b; --bg2:#2b3038; --bg3:#343c46;
   --bord:#3a424e; --bord2:#5a6678; --txt:#c8d4dc; --dim:#5a6878;
@@ -21,7 +22,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   repeating-linear-gradient(47deg,transparent 0px,transparent 200px,rgba(160,185,210,.015) 200px,rgba(160,185,210,.015) 201px,transparent 201px,transparent 390px),
   linear-gradient(160deg,#1e2228 0%,#191d24 40%,#1c2030 100%)}
  
-/* Header */
+/* Encabezado superior con archivo cargado y acciones principales. */
 header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px solid var(--bord2);
   padding:8px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .logo{font-family:var(--fh);font-size:15px;letter-spacing:3px;color:var(--txt)}
@@ -34,12 +35,12 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
 .btn-go:hover:not(:disabled){background:var(--bg3)}
 .btn-go:disabled{opacity:.35;cursor:default}
  
-/* Layout */
+/* Distribución principal: productor | buffer | consumidores. */
 .page{position:relative;z-index:1}
 .main-grid{display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:12px 16px;max-width:1360px;margin:0 auto}
 @media(max-width:860px){.main-grid{grid-template-columns:1fr}}
  
-/* Card */
+/* Tarjetas base y variantes de énfasis por estado de ejecución. */
 .card{background:var(--bg1);border:1px solid var(--bord);border-radius:10px;overflow:hidden;transition:border-color .25s}
 .card-hdr{padding:7px 12px;background:var(--bg2);border-bottom:1px solid var(--bord);font-family:var(--fh);font-size:12px;letter-spacing:2px;display:flex;align-items:center;justify-content:space-between}
 .card-body{padding:12px}
@@ -47,7 +48,7 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
 .card.g-odd{border-color:var(--odd)!important}  .card.g-prime{border-color:var(--prime)!important}
 .card.g-crit{border-color:var(--crit)!important} .card.g-block{border-color:var(--red)!important}
  
-/* Actor */
+/* Bloques visuales de actores (imagen de estado, etiqueta y último número). */
 .actor-img-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 6px}
 .state-img{width:90px;height:90px;object-fit:contain;border-radius:6px;filter:brightness(.55) saturate(.2);transition:filter .3s,transform .3s}
 .state-img.s-producing{filter:brightness(1) saturate(.5) hue-rotate(170deg)}
@@ -61,18 +62,18 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
 @keyframes numPop{0%{transform:scale(1.5);opacity:.3}100%{transform:scale(1);opacity:1}}
 .pop{animation:numPop .3s ease}
  
-/* Barra progreso */
+/* Progreso del productor: cuántos números ya publicó al buffer. */
 .prog-wrap{margin-top:8px}
 .prog-rail{height:2px;background:var(--bord);border-radius:2px;overflow:hidden}
 .prog-bar{height:100%;background:var(--pro);width:0%;transition:width .4s ease}
 .prog-lbl{text-align:center;font-size:9px;color:var(--dim);margin-top:4px}
  
-/* Sum box */
+/* Caja de acumulado para cada consumidor. */
 .sum-box{margin-top:8px;background:var(--bg2);border:1px solid var(--bord);border-radius:7px;padding:8px;text-align:center}
 .sum-val{font-family:var(--fh);font-size:22px}
 .sum-sub{font-size:11px;color:var(--dim);margin-top:2px}
  
-/* Buffer */
+/* Visualización del buffer FIFO y su ocupación. */
 .buf-arrows{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);font-family:var(--fh);letter-spacing:1px;padding:0 4px}
 .arr-in{color:var(--pro)} .arr-out{color:var(--even)}
 .buf-slots{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;padding:10px 8px;background:var(--bg2);border:1px solid var(--bord);border-radius:8px}
@@ -89,7 +90,7 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
 .front-lbl{font-size:9px;color:var(--dim);font-family:var(--fh);padding-left:6px;margin-top:14px}
 .front-val{color:var(--txt);font-size:11px}
  
-/* Log */
+/* Registro de eventos en tiempo real enviado por backend. */
 .log-sec{padding:0 16px 16px;max-width:1360px;margin:0 auto}
 .log-wrap{background:var(--bg1);border:1px solid var(--bord);border-radius:10px;overflow:hidden}
 .log-hdr{padding:6px 12px;background:var(--bg2);border-bottom:1px solid var(--bord);font-family:var(--fh);font-size:12px;letter-spacing:2px;display:flex;align-items:center;justify-content:space-between}
@@ -101,7 +102,7 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
 .c-producer{color:var(--pro)} .c-even{color:var(--even)} .c-odd{color:var(--odd)}
 .c-prime{color:var(--prime)}  .c-blocked{color:var(--red)} .c-system{color:var(--dim);font-style:italic}
  
-/* Overlays */
+/* Overlays de carga de archivo y resumen final de simulación. */
 .overlay{display:none;position:fixed;inset:0;background:rgba(10,12,16,.92);backdrop-filter:blur(10px);z-index:500;align-items:center;justify-content:center}
 .overlay.show{display:flex}
 @keyframes cardIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
@@ -129,6 +130,10 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
 <body>
 <div class="page">
  
+<!--
+  Overlay inicial: bloquea la interfaz hasta que el usuario cargue
+  un archivo de entrada válido.
+-->
 <div class="overlay show" id="upload-overlay">
   <div class="upload-card">
     <div class="up-title">PRODUCTOR-CONSUMIDOR</div>
@@ -143,6 +148,7 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
   </div>
 </div>
  
+<!-- Overlay de resultados al finalizar la simulación. -->
 <div class="overlay" id="final-overlay">
   <div class="final-card">
     <div class="fin-title">✓ SIMULACIÓN COMPLETADA</div>
@@ -156,6 +162,7 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
   </div>
 </div>
  
+<!-- Barra superior con estado del archivo y botones de control. -->
 <header>
   <div class="logo">PRODUCTOR<b>-CONSUMIDOR</b> / SO — URL</div>
   <div class="hdr-r">
@@ -165,6 +172,7 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
   </div>
 </header>
  
+<!-- Cuerpo principal: productor (izq), buffer (centro), consumidores (der). -->
 <div class="main-grid">
   <div>
     <div class="card" id="card-producer">
@@ -206,10 +214,14 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
   </div>
  
   <div style="display:flex;flex-direction:column;gap:10px">
-    <!-- Consumidores generados dinámicamente -->
+    <!--
+      Las tarjetas de consumidores se insertan desde JavaScript para
+      evitar duplicación de markup y mantener consistencia visual.
+    -->
   </div>
 </div>
  
+<!-- Sección inferior de logs (eventos y transiciones de estado). -->
 <div class="log-sec">
   <div class="log-wrap">
     <div class="log-hdr"><span>◉ REGISTRO DE EVENTOS</span><button class="log-clr" onclick="document.getElementById('log-body').innerHTML=''">LIMPIAR</button></div>
@@ -220,21 +232,34 @@ header{position:sticky;top:0;z-index:200;background:var(--bg1);border-bottom:1px
  
 <script id="sim-config" type="application/json">{{ {"bufferSize": buffer_size} | tojson }}</script>
 <script>
+
+// CONFIGURACIÓN INICIAL
+// Tamaño del buffer inyectado por el backend (Jinja -> JSON).
 const BUF_SIZE = JSON.parse(document.getElementById('sim-config').textContent).bufferSize;
+// TOTAL: cantidad de números cargados en archivo.
+// prodIdx: cuántos números ha insertado ya el productor.
 let TOTAL = 0, prodIdx = 0;
  
-// Clasificación
+// CLASIFICACIÓN DE NÚMEROS
+
+// Estas funciones replican la lógica del backend para colorear la UI.
+// No controlan sincronización; solo presentación.
 const isPrime = n => { if(n<2)return false; if(n===2)return true; if(n%2===0)return false; for(let i=3;i<=Math.sqrt(n);i+=2)if(n%i===0)return false; return true; };
 const classify = n => isPrime(n)?'prime':n%2===0?'even':'odd';
  
-// Configuración de actores
+// MAPAS DE APOYO PARA RENDER
+// KINDS define los tres consumidores especializados.
 const KINDS = ['even','odd','prime'];
 const LABELS = {even:'PARES',odd:'IMPARES',prime:'PRIMOS'};
 const COLORS = {even:'var(--even)',odd:'var(--odd)',prime:'var(--prime)'};
 const IMG = {idle:'/imagenes/espera.png',waiting:'/imagenes/espera.png',producing:'/imagenes/consumiendo.png',consuming:'/imagenes/consumiendo.png',blocked:'/imagenes/bloqueado.png',critical:'/imagenes/seccion_critica.png',done:'/imagenes/espera.png'};
 const LBL = {idle:'IDLE',waiting:'EN ESPERA',producing:'PRODUCIENDO',consuming:'CONSUMIENDO',blocked:'BLOQUEADO ⚠',critical:'SECC. CRÍTICA',done:'TERMINADO ✓'};
  
-// Generar tarjetas de consumidores dinámicamente
+
+// GENERACIÓN DINÁMICA DE TARJETAS DE CONSUMIDORES
+
+// Cada tarjeta se crea con IDs derivados del tipo para actualizarla
+// fácilmente en eventos de Socket.IO.
 const consCol = document.querySelector('.main-grid > div:last-child');
 KINDS.forEach(k => {
   consCol.innerHTML += `
@@ -257,7 +282,10 @@ KINDS.forEach(k => {
   </div>`;
 });
  
-// Upload
+
+// CARGA DE ARCHIVO
+
+// Soporta drag&drop y selección manual.
 const upArea = document.getElementById('up-area'), fileInput = document.getElementById('file-input'), upStatus = document.getElementById('up-status');
 upArea.addEventListener('dragover', e => { e.preventDefault(); upArea.classList.add('drag-over'); });
 upArea.addEventListener('dragleave', () => upArea.classList.remove('drag-over'));
@@ -265,9 +293,11 @@ upArea.addEventListener('drop', e => { e.preventDefault(); upArea.classList.remo
 fileInput.addEventListener('change', e => { if(e.target.files[0]) uploadFile(e.target.files[0]); });
  
 async function uploadFile(file) {
+  // Muestra estado de procesamiento para feedback inmediato.
   upStatus.innerHTML = '<span class="up-spinner"></span> Procesando...';
   const fd = new FormData(); fd.append('file', file);
   try {
+    // /upload parsea el archivo y devuelve métricas iniciales.
     const data = await (await fetch('/upload',{method:'POST',body:fd})).json();
     if(data.success) onFileLoaded(data);
     else { upStatus.textContent = '⚠ ' + data.error; upStatus.style.color = 'var(--red)'; }
@@ -275,6 +305,7 @@ async function uploadFile(file) {
 }
  
 function onFileLoaded(d) {
+  // Sincroniza cabecera y progreso inicial para habilitar simulación.
   TOTAL = d.total;
   document.getElementById('pill-fp').textContent = `${d.filepath}  (${d.total} núms)`;
   document.getElementById('btn-change').style.display = '';
@@ -285,7 +316,9 @@ function onFileLoaded(d) {
   addLog(`Archivo: ${d.filepath} — ${d.total} números${d.skipped>0?` (${d.skipped} omitidas)`:''}`, 'system', now());
 }
  
-// Actor update
+
+// RENDER DE ESTADOS DE ACTORES
+// key llega desde backend (producer, consumer_even, ...).
 function setActor(key, state) {
   const isConsumer = key !== 'producer';
   const kind = isConsumer ? key.replace('consumer_','') : null;
@@ -298,6 +331,7 @@ function setActor(key, state) {
   lbl.textContent = LBL[state] || state.toUpperCase();
   lbl.style.color = state==='blocked'?'var(--red)':state==='critical'?'var(--crit)':kind?COLORS[kind]:'var(--pro)';
   if(card) {
+    // Reinicia clases para evitar acumulación de estilos viejos.
     card.className = 'card';
     if(state==='critical') card.classList.add('g-crit');
     else if(state==='blocked') card.classList.add('g-block');
@@ -305,9 +339,13 @@ function setActor(key, state) {
     else if(state==='consuming'&&kind) card.classList.add('g-'+kind);
   }
 }
+// Aplica batch de estados en una sola pasada.
 const applyStates = states => states && Object.entries(states).forEach(([k,v]) => setActor(k,v));
  
-// Buffer
+
+// RENDER DEL BUFFER FIFO
+
+// contents siempre representa el buffer en orden de extracción.
 function renderBuffer(contents, crit) {
   const n = contents.length, p = Math.round(n/BUF_SIZE*100);
   document.getElementById('buf-cnt').textContent = `${n} / ${BUF_SIZE}`;
@@ -319,6 +357,7 @@ function renderBuffer(contents, crit) {
   const wrap = document.getElementById('buf-slots'); wrap.innerHTML = '';
   for(let i=0;i<BUF_SIZE;i++) {
     const s = document.createElement('div');
+    // Se colorea por tipo solo para visualización.
     if(i<n) { const k=classify(contents[i]); s.className=`slot occ-${k}${i===0?' front':''}${crit&&i===0?' occ-critical':''}`; s.textContent=contents[i]; }
     else s.className='slot';
     wrap.appendChild(s);
@@ -328,29 +367,48 @@ function renderBuffer(contents, crit) {
   else fl.style.visibility='hidden';
 }
  
-// Helpers
+
+// HELPERS DE UI
+
+// flashNum reaplica animación CSS forzando.
 const flashNum = (id,v,c) => { const el=document.getElementById(id); el.textContent=v; if(c)el.style.color=c; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); };
 const now = () => new Date().toLocaleTimeString();
+// El log se mantiene acotado a 200 filas para evitar crecimiento infinito.
 function addLog(msg,kind,ts) { const b=document.getElementById('log-body'),r=document.createElement('div'); r.className='log-row'; r.innerHTML=`<span class="log-ts">${ts}</span><span class="c-${kind}">${msg}</span>`; b.insertBefore(r,b.firstChild); if(b.children.length>200)b.removeChild(b.lastChild); }
+// Reinicia paneles de consumidores entre corridas.
 function resetConsumers() { KINDS.forEach(k => { document.getElementById('sum-'+k).textContent='0'; document.getElementById('cnt-'+k).textContent='0 números'; document.getElementById('snum-consumer-'+k).textContent='—'; setActor('consumer_'+k,'idle'); }); }
  
-// SocketIO
+
+// SOCKET.IO: SUSCRIPCIÓN A EVENTOS DEL BACKEND
+
 const socket = io();
 socket.on('connect', () => addLog('Conectado al servidor','system',now()));
+//recarga la pantalla inicial si el servidor ya tenía archivo cargado.
 socket.on('ready', d => { renderBuffer(d.buffer||[],null); if(d.file_loaded&&d.total>0){TOTAL=d.total;document.getElementById('prog-lbl').textContent=`0 / ${TOTAL}`;document.getElementById('btn-go').disabled=false;document.getElementById('upload-overlay').classList.remove('show');} });
+// simulation_start reinicia indicadores visuales.
 socket.on('simulation_start', d => { prodIdx=0;renderBuffer([],null);applyStates(d.states);document.getElementById('btn-go').disabled=true;document.getElementById('btn-go').textContent='⟳ EJECUTANDO';document.getElementById('snum-producer').textContent='—';resetConsumers(); });
+// insert: actualiza progreso del productor y estado del buffer.
 socket.on('insert', d => { prodIdx++;document.getElementById('prog-bar').style.width=(prodIdx/TOTAL*100)+'%';document.getElementById('prog-lbl').textContent=`${prodIdx} / ${TOTAL}`;flashNum('snum-producer',d.num,'var(--pro)');renderBuffer(d.buffer,d.critical);applyStates(d.states); });
+// take: actualiza suma/conteo del consumidor que tomó un elemento.
 socket.on('take', d => { flashNum('snum-consumer-'+d.consumer,d.num,COLORS[d.consumer]);document.getElementById('sum-'+d.consumer).textContent=d.sum;document.getElementById('cnt-'+d.consumer).textContent=d.count+' número'+(d.count!==1?'s':'');renderBuffer(d.buffer,d.critical);applyStates(d.states); });
+// critical_enter y state_update refrescan visualización de sección crítica.
 socket.on('critical_enter', d => { renderBuffer(d.buffer,d.critical);applyStates(d.states); });
 socket.on('state_update', d => { renderBuffer(d.buffer||[],d.critical);applyStates(d.states);if(d.sums)KINDS.forEach(k=>document.getElementById('sum-'+k).textContent=d.sums[k]);if(d.counts)KINDS.forEach(k=>document.getElementById('cnt-'+k).textContent=d.counts[k]+' número'+(d.counts[k]!==1?'s':'')); });
 socket.on('log', d => addLog(d.msg,d.kind,d.ts));
+// simulation_end muestra overlay de resumen final.
 socket.on('simulation_end', d => { document.getElementById('btn-go').textContent='✓ COMPLETADO';KINDS.forEach(k=>{document.getElementById('f-sum-'+k).textContent=d.sums[k];document.getElementById('f-cnt-'+k).textContent=d.counts[k]+' núms';}); setTimeout(()=>document.getElementById('final-overlay').classList.add('show'),1400); });
 socket.on('error', d => addLog('⚠ '+d.msg,'system',now()));
  
+
+// ACCIONES DE USUARIO
+
 function startSim() { socket.emit('start'); }
+// Reinicia vista sin volver a subir archivo.
 function restartSameFile() { document.getElementById('final-overlay').classList.remove('show');const btn=document.getElementById('btn-go');btn.disabled=false;btn.textContent='▶ INICIAR';prodIdx=0;document.getElementById('prog-bar').style.width='0%';document.getElementById('prog-lbl').textContent=`0 / ${TOTAL}`;document.getElementById('snum-producer').textContent='—';document.getElementById('log-body').innerHTML='';resetConsumers();setActor('producer','idle');renderBuffer([],null); }
+// Vuelve a estado inicial para cargar un archivo nuevo.
 function changeFile() { document.getElementById('final-overlay').classList.remove('show');document.getElementById('upload-overlay').classList.add('show');upStatus.textContent='';fileInput.value='';const btn=document.getElementById('btn-go');btn.disabled=true;btn.textContent='▶ INICIAR';prodIdx=0;TOTAL=0;document.getElementById('prog-bar').style.width='0%';document.getElementById('prog-lbl').textContent='— / —';document.getElementById('snum-producer').textContent='—';document.getElementById('log-body').innerHTML='';resetConsumers();setActor('producer','idle');renderBuffer([],null); }
  
+// Estado inicial de buffer vacío al cargar la página.
 renderBuffer([], null);
 </script>
 </body>
