@@ -336,8 +336,8 @@ def upload_file():
     """
     Carga números desde un archivo de texto enviado por el frontend.
 
-    El archivo debe contener un entero por línea. Retorna métricas para
-    actualizar la interfaz y habilitar la ejecución.
+    El archivo debe contener un entero no negativo por línea. Retorna
+    métricas para actualizar la interfaz y habilitar la ejecución.
     """
     global _numbers, _filepath
 
@@ -358,9 +358,16 @@ def upload_file():
         if not line:
             continue
         try:
-            nums.append(int(line))
+            num = int(line)
         except ValueError:
             skipped.append((i, line))
+            continue
+
+        if num < 0:
+            skipped.append((i, line))
+            continue
+
+        nums.append(num)
 
     if not nums:
         return jsonify({'success': False, 'error': 'No se encontraron números válidos en el archivo.'})
